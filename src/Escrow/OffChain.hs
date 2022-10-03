@@ -1,0 +1,175 @@
+{-  HLINT ignore "Redundant <$>"    -}
+
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE OverloadedStrings   #-}
+
+{-|
+Module      : Escrow.OffChain
+Description : OffChain code for Escrow Contract (congestive version).
+Copyright   : (c) 2022 IDYIA LLC dba imagine.ai
+Maintainer  : sos@imagine.ai
+Stability   : develop
+
+We define here the interface for accessing the contract functions through
+an Schema. The main offchain functions implement all the logic for
+submitting transactions to the blockchain.
+-}
+
+module Escrow.OffChain where
+
+import qualified Data.Map                  as Map
+import           Data.Text
+import           Control.Monad             (forever)
+import           Control.Lens
+
+import           PlutusTx.Numeric          as PNum
+import           Plutus.Contract           as Contract hiding (tell)
+import           Ledger
+import           Ledger.Constraints        as Constraints
+import           Ledger.Value              as Value
+import           Ledger.Ada
+
+import           Utils.Currency            as Currency
+import           Utils.OffChain
+
+import           Escrow.Business
+import           Escrow.Types
+import           Escrow.Validator
+import           Escrow.Tokens
+
+-- | Contract Schema
+type EscrowSchema = Endpoint "addPayment" (PaymentPubKeyHash,Integer)
+                .\/ Endpoint "collect" ()
+
+-- | Initialization of the contract. It creates the parameter
+--   and submits the first utxo containing the initial state.
+run :: TxOutRef -> Contract (LastTxId Parameter) EscrowSchema Text ()
+run txRef = do
+    param <- start txRef
+    tell param
+    endpoints param
+
+endpoints
+    :: Parameter
+    -> Contract (LastTxId Parameter) EscrowSchema Text ()
+endpoints p = forever $ handleError logError $ awaitPromise $
+            addPaymentEp `select` collectEp
+  where
+    addPaymentEp :: Promise (LastTxId Parameter) EscrowSchema Text ()
+    addPaymentEp = endpoint @"addPayment" $ addPaymentOp p
+
+    collectEp :: Promise (LastTxId Parameter) EscrowSchema Text ()
+    collectEp = endpoint @"collect" $ const $ collectOp p
+
+-- | Mints the contract NFT and produces the first utxo containing the
+--   initial state. Returns the contract parameter.
+start
+    :: forall w s
+    .  TxOutRef
+    -> Contract (LastTxId w) s Text Parameter
+start txRef = do
+    (contractCs, nftLkp, nftTx) <- mintCurrencyWithUTxO @OneShot
+                                                        [(escrowTokenName,1)]
+                                                        txRef
+
+    logInfo @String "Hello Imagine!"
+    logInfo @String $ "CS: " ++ show contractCs
+
+    let cs            = Currency.curSymbol contractCs
+        contractAsset = AssetClass (cs, escrowTokenName)
+        nftV          = assetClassValue contractAsset 1
+        parameter     = mkParameter contractAsset
+        val           = minAda <> nftV
+        datum         = mkEscrowDatum initialEscrowState
+
+        lkp =  Constraints.typedValidatorLookups (escrowInst parameter)
+            <> Constraints.otherScript (escrowValidator parameter)
+            <> nftLkp
+
+        tx  =  Constraints.mustPayToTheScript datum val
+            <> nftTx
+
+    cardanoTx <- submitTxConstraintsWith @Escrowing lkp tx
+    logInfo @String $ "Tx: " ++ show cardanoTx
+
+    logInfo @String $ "Addr: " ++ show (escrowAddress parameter)
+    logInfo @String "Contract started"
+
+    return parameter
+
+-- | Updates the state of the contract by adding a payment to it.
+addPaymentOp
+    :: forall w s
+    .  Parameter
+    -> (PaymentPubKeyHash, Integer)
+    -> Contract (LastTxId w) s Text ()
+addPaymentOp p (pkh, m) = do
+    (oref,outxo) <- lookupScriptUtxo (escrowAddress p) (stateNFT p)
+    datum        <- getContractDatum outxo
+
+    let newState = addPayment (eState datum) pkh m
+        in case newState of
+            Nothing -> logError @String
+                           "Payment operation failed: tried to pay with amount <=0"
+            Just st -> do
+                let upDatum     = mkEscrowDatum st
+                    scriptValue = outxo ^. ciTxOutValue <> lovelaceValueOf m
+
+                    tx =  Constraints.mustSpendScriptOutput oref (addPayRedeemer pkh m)
+                       <> Constraints.mustPayToTheScript upDatum scriptValue
+
+                ledgerTx <- submitTxConstraintsWith @Escrowing
+                                                    (contractLookups p [(oref,outxo)])
+                                                    tx
+
+                tellTxId $ getCardanoTxId ledgerTx
+                logInfo @String "Payment operation submitted successfully"
+
+-- | Collects the amount specified in the state for the signer's
+--   public key, if it exists.
+collectOp
+    :: forall w s
+    .  Parameter
+    -> Contract (LastTxId w) s Text ()
+collectOp p = do
+    (oref,outxo) <- lookupScriptUtxo (escrowAddress p) (stateNFT p)
+    datum        <- getContractDatum outxo
+    pkh          <- Contract.ownPaymentPubKeyHash
+
+    case collect (eState datum) pkh of
+        Nothing -> logError @String "Collect operation failed: signer not in state"
+        Just (st,val) -> do
+            let upDatum        = mkEscrowDatum st
+                scriptValue    = outxo ^. ciTxOutValue PNum.- lovelaceValueOf val
+
+                tx =  Constraints.mustSpendScriptOutput oref collectRedeemer
+                   <> Constraints.mustPayToTheScript upDatum scriptValue
+                   <> Constraints.mustBeSignedBy pkh
+
+            ledgerTx <- submitTxConstraintsWith @Escrowing
+                                                (contractLookups p [(oref,outxo)])
+                                                tx
+
+            tellTxId $ getCardanoTxId ledgerTx
+            logInfo @String "Collect operation submitted successfully"
+
+-- | Lookups for submitting a transaction spending some utxos.
+contractLookups
+    :: Parameter
+    -> [(TxOutRef,ChainIndexTxOut)]
+    -> ScriptLookups Escrowing
+contractLookups p utxos =
+    Constraints.unspentOutputs (Map.fromList utxos)    <>
+    Constraints.typedValidatorLookups (escrowInst p) <>
+    Constraints.otherScript (escrowValidator p)
+
+-- | Lifted function for getting datum from a ChainIndexTxOut.
+getContractDatum
+    :: forall w s
+    .  ChainIndexTxOut
+    -> Contract w s Text EscrowDatum
+getContractDatum = maybe (throwError "Can't find contract datum") return .
+                   getChainIndexTxOutDatum
