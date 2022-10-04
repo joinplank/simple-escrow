@@ -10,8 +10,8 @@
 {-|
 Module      : Utils.OffChain
 Description : Common off-chain functions.
-Copyright   : (c) 2021 IDYIA LLC dba imagine.ai
-Maintainer  : sos@imagine.ai
+Copyright   : (c) 2021 IDYIA LLC dba Plank
+Maintainer  : sos@joinplank.com
 Stability   : develop
 -}
 
@@ -20,25 +20,20 @@ module Utils.OffChain where
 import           Data.Text         (Text)
 import qualified Data.Text         as T
 import qualified Data.Map          as Map
-import           Data.Monoid       (Last (..))
 
 import           Control.Lens
 import           Control.Monad
 import           Prelude           hiding ((*))
 
-import qualified PlutusTx
-import           PlutusTx.Prelude (modulo)
 import           Ledger            hiding (singleton)
 import           Ledger.Value
 import qualified Ledger.Ada        as Ada
 import           Ledger.Constraints as Constraints
 import           Ledger.Typed.Scripts
-import           Plutus.Contract   hiding (tell)
-import qualified Plutus.Contract   as Contract (tell)
+import qualified PlutusTx
+import           PlutusTx.Prelude (modulo)
+import           Plutus.Contract
 import           PlutusTx.Numeric  as Num
-import           Plutus.ChainIndex (TxValidity, RollbackState(Committed))
-
--- import Concurrent.Types
 
 {- | Off-chain function for getting a list of utxos for the given address that
      contains the given NFT. The ChainIndexTxOut, if possible, has
@@ -98,43 +93,12 @@ getChainIndexTxOutDatum ciTxOut =
 
 {-# INLINABLE minAdaTimes #-}
 minAdaTimes :: Integer -> Value
-minAdaTimes n =
-    let Ada.Lovelace {Ada.getLovelace = m} = Ledger.minAdaTxOut
-    in Ada.lovelaceValueOf (n * m)
+minAdaTimes n = let Ada.Lovelace {Ada.getLovelace = m} = Ledger.minAdaTxOut
+                in Ada.lovelaceValueOf (n * m)
 
 {-# INLINABLE negativeMinAdaTimes #-}
 negativeMinAdaTimes :: Integer -> Value
 negativeMinAdaTimes = minAdaTimes . Num.negate
-
--- | The type 'LastTxId' sums up either a transaction id or another type.
-type LastTxId w = Last (Either (TxId, TxValidity) w)
-
--- | Given a value of type 'w' we wrap up that value with the 'Right' constructor.
-tell :: forall w s. w -> Contract (LastTxId w) s Text ()
-tell = Contract.tell . pure . Right
-
--- | Given a 'TxId' we wrap up that value with the 'Left' constructor.
-tellTxId
-    :: forall w s
-    .  TxId
-    -> Contract (LastTxId w) s Text ()
-tellTxId txid = awaitTxCommited txid >>=
-                \txv -> Contract.tell (pure $ Left (txid, txv))
-
-{- | REMOVE ME on the near future. This function awaits until the status of the
-     transaction is commmitted and it only make sense for a backend integration
-     using the simulated PAB or the trace emulator.
--}
-awaitTxCommited
-    :: forall w s
-    .  TxId
-    -> Contract w s Text TxValidity
-awaitTxCommited i = go
-  where
-    go :: Contract w s Text TxValidity
-    go = awaitTxStatusChange i >>=
-         \case Committed txv _ -> return txv
-               _             -> go
 
 selectRandom :: AsContractError e => [a] -> Contract w s e (Maybe a)
 selectRandom [] = return Nothing
@@ -160,27 +124,15 @@ submitTxConstraintsWithLogging lkp tx = case mkTx lkp tx of
 isCustodial :: Bool
 isCustodial = False
 
-handleTxConstraints
-    :: ( PlutusTx.ToData (RedeemerType a)
-       , PlutusTx.FromData (DatumType a)
-       , PlutusTx.ToData (DatumType a)
-       )
-    => ScriptLookups a
-    -> TxConstraints (RedeemerType a) (DatumType a)
-    -> Contract w s T.Text ()
-handleTxConstraints lkp tx =
-    if isCustodial
-        then void $ submitTxConstraintsWith lkp tx
-        else mkTxConstraints lkp tx >>= yieldUnbalancedTx . adjustUnbalancedTx
-
--- mustPayToWalletAddress
---     :: forall i o
---     .  WalletAddress
---     -> Value
---     -> TxConstraints i o
--- mustPayToWalletAddress WalletAddress{..} val = case waStaking of
---     Just staking ->
---         let ppkh = PaymentPubKeyHash waPayment
---             spkh = StakePubKeyHash staking
---         in Constraints.mustPayToPubKeyAddress ppkh spkh val
---     Nothing -> Constraints.mustPayToPubKey (PaymentPubKeyHash waPayment) val
+--  Performs transaction submission, which depends on the value of isCustodial.
+handleTxConstraints :: ( PlutusTx.ToData (RedeemerType a)
+                       , PlutusTx.FromData (DatumType a)
+                       , PlutusTx.ToData (DatumType a)
+                       )
+                    => ScriptLookups a
+                    -> TxConstraints (RedeemerType a)
+                                     (DatumType a)
+                    -> Contract w s T.Text ()
+handleTxConstraints lkp tx
+  | isCustodial = void $ submitTxConstraintsWith lkp tx
+  | otherwise = mkTxConstraints lkp tx >>= yieldUnbalancedTx . adjustUnbalancedTx

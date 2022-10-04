@@ -4,8 +4,8 @@
 {-|
 Module      : Escrow.OnChain
 Description : OnChain validator for the Escrow contract (congestive version).
-Copyright   : (c) 2022 IDYIA LLC dba imagine.ai
-Maintainer  : sos@imagine.ai
+Copyright   : (c) 2022 IDYIA LLC dba Plank
+Maintainer  : sos@joinplank.com
 Stability   : develop
 
 We define here only the contract validator.

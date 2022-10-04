@@ -43,7 +43,6 @@ import Ledger.Typed.Scripts      qualified as Scripts
 
 import Utils.OffChain            (minAdaTimes, selectRandom)
 
-
 {-| The idea behind this typeclass is that when we want to define a new currency
     to be minted in our contract, we only have to specify the definitions for
     this functions so we can reuse `mintNFT` and `mintCurrency`.

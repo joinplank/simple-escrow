@@ -7,8 +7,8 @@
 {-|
 Module      : Escrow.Validator
 Description : Definition of contract script.
-Copyright   : (c) 2022 IDYIA LLC dba imagine.ai
-Maintainer  : sos@imagine.ai
+Copyright   : (c) 2022 IDYIA LLC dba Plank
+Maintainer  : sos@joinplank.com
 Stability   : develop
 
 We define the boilerplate for compiling the validator.

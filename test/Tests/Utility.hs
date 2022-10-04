@@ -6,6 +6,14 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 
+{-|
+Module      : Tests.Utility
+Description : Definition of contract script.
+Copyright   : (c) 2022 IDYIA LLC dba Plank
+Maintainer  : sos@joinplank.com
+Stability   : develop
+-}
+
 module Tests.Utility where
 
 import           Data.Default               (def)
@@ -19,14 +27,14 @@ import           Control.Monad.Freer.Extras as Extras
 
 import           Ledger
 import           Ledger.Ada                 as Ada
+import           Plutus.Contract
 import           Plutus.Contract.Test
 import           Plutus.Trace.Emulator      as Emulator
 import           Prelude                    hiding ((+))
 
 import           Escrow
-import           Utils.OffChain             (LastTxId)
 
-type EscrowHandle = ContractHandle (LastTxId Parameter) EscrowSchema Text
+type EscrowHandle = ContractHandle (Last Parameter) EmptySchema Text
 
 type CEscrowHandle w s = ContractHandle w s Text
 
@@ -47,25 +55,5 @@ getParameter h = do
     void $ Emulator.waitNSlots 1
     l <- observableState h
     case l of
-        Last (Just (Right param)) -> Extras.logInfo (show param) >> return param
-        Last _                    -> Emulator.waitNSlots 1 >> getParameter h
-
-getMCTxId :: EscrowHandle -> EmulatorTrace TxId
-getMCTxId h = do
-    void $ Emulator.waitNSlots 1
-    l <- observableState h
-    case l of
-        Last (Just (Left (txid,txv))) -> Extras.logInfo (show (txid, txv)) >>
-                                         return txid
-        Last _                        -> Emulator.waitNSlots 1 >> getMCTxId h
-
-
-getLastObsState :: EscrowHandle -> EmulatorTrace ()
-getLastObsState h = do
-    void $ Emulator.waitNSlots 1
-    l <- observableState h
-    case l of
-        Last (Just (Left mcTxId)) -> Extras.logInfo (show mcTxId)
-        Last (Just (Right param)) -> Extras.logInfo (show param)
-        _                         -> Emulator.waitNSlots 1 >>
-                                        getLastObsState h
+        Last (Just param) -> Extras.logInfo (show param) >> return param
+        Last _            -> Emulator.waitNSlots 1 >> getParameter h

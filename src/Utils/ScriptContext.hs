@@ -6,8 +6,8 @@
 {-|
 Module      : Utils.ScriptContext
 Description : Useful functions about script contexts.
-Copyright   : (c) 2021 IDYIA LLC dba imagine.ai
-Maintainer  : sos@imagine.ai
+Copyright   : (c) 2022 IDYIA LLC dba Plank
+Maintainer  : sos@joinplank.com
 Stability   : develop
 
 Common functions for manipulating script context.

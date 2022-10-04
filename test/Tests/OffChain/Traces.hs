@@ -3,6 +3,14 @@
 {-# LANGUAGE DataKinds          #-}
 {-# LANGUAGE OverloadedStrings  #-}
 
+{-|
+Module      : Tests.OffChain.Traces
+Description : Definition of contract script.
+Copyright   : (c) 2022 IDYIA LLC dba Plank
+Maintainer  : sos@joinplank.com
+Stability   : develop
+-}
+
 module Tests.OffChain.Traces where
 
 import           Control.Monad                     hiding (fmap)
@@ -16,13 +24,16 @@ import           Tests.Utility
 import qualified Escrow          as Standard
 
 utxo :: TxOutRef
-utxo = TxOutRef "2616739c718145f994953df69175f18ad3deef2751fb2572babf2fbe361cd0d6" 50
+utxo = TxOutRef
+       "2616739c718145f994953df69175f18ad3deef2751fb2572babf2fbe361cd0d6"
+       50
 
 utxo1 :: TxOutRef
 utxo1 = TxOutRef hardcodedTxHash 5
   where
     hardcodedTxHash :: TxId
-    hardcodedTxHash = "034cc188fb271a54edb736990966de087e32279015cb46cc7a6ce4597469d0ed"
+    hardcodedTxHash =
+        "034cc188fb271a54edb736990966de087e32279015cb46cc7a6ce4597469d0ed"
 
 -- | A trace that runs succesfully and it's balanced.
 --   Wallet 1 starts the contract.
@@ -30,20 +41,24 @@ utxo1 = TxOutRef hardcodedTxHash 5
 --   Wallet 2 collects the payment.
 runTraceSucc :: EmulatorTrace ()
 runTraceSucc = do
-    h  <- activateContractWallet (knownWallet 1) (Standard.run utxo)
-    param <- getParameter h
+    hRun  <- activateContractWallet (knownWallet 1) (Standard.run utxo)
+    param <- getParameter hRun
     h2 <- activateContractWallet (knownWallet 2) (Standard.endpoints param)
     h3 <- activateContractWallet (knownWallet 3) (Standard.endpoints param)
 
     void $ Emulator.waitNSlots 1
 
-    callEndpoint @"addPayment" h3 (mockWalletPaymentPubKeyHash (knownWallet 2), 1_000_000)
+    callEndpoint @"addPayment" h3 ( mockWalletPaymentPubKeyHash (knownWallet 2)
+                                  , 1_000_000
+                                  )
     void $ Emulator.waitNSlots 1
 
-    callEndpoint @"addPayment" h3 (mockWalletPaymentPubKeyHash (knownWallet 2), 1_000_000)
+    callEndpoint @"addPayment" h3 ( mockWalletPaymentPubKeyHash (knownWallet 2)
+                                  , 1_000_000
+                                  )
     void $ Emulator.waitNSlots 1
 
-    callEndpoint @"collect" h2 ()
+    callEndpoint @"collect" h2 $ mockWalletPaymentPubKeyHash (knownWallet 2)
     void $ Emulator.waitNSlots 1
 
 -- | A trace where collect operation is called by a wallet that
@@ -53,16 +68,19 @@ runTraceSucc = do
 --   Wallet 2 calls collect but fails.
 collectTraceFail :: EmulatorTrace ()
 collectTraceFail = do
-    h  <- activateContractWallet (knownWallet 1) (Standard.run utxo)
-    param <- getParameter h
+    hRun  <- activateContractWallet (knownWallet 1) (Standard.run utxo)
+    param <- getParameter hRun
+    h1 <- activateContractWallet (knownWallet 1) (Standard.endpoints param)
     h2 <- activateContractWallet (knownWallet 2) (Standard.endpoints param)
 
     void $ Emulator.waitNSlots 1
 
-    callEndpoint @"addPayment" h (mockWalletPaymentPubKeyHash (knownWallet 3), 10_000_000)
+    callEndpoint @"addPayment" h1 ( mockWalletPaymentPubKeyHash (knownWallet 3)
+                                  , 10_000_000
+                                  )
     void $ Emulator.waitNSlots 1
 
-    callEndpoint @"collect" h2 ()
+    callEndpoint @"collect" h2 $ mockWalletPaymentPubKeyHash (knownWallet 2)
     void $ Emulator.waitNSlots 1
 
 -- | A trace where addPayment is called with an invalid amount
@@ -71,14 +89,18 @@ collectTraceFail = do
 --   Wallet 1 tries to add a payment with -10 Ada but fails.
 addPayTraceFail :: EmulatorTrace ()
 addPayTraceFail = do
-    h <- activateContractWallet (knownWallet 1) (Standard.run utxo)
+    hRun <- activateContractWallet (knownWallet 1) (Standard.run utxo)
+    param <- getParameter hRun
+    h1 <- activateContractWallet (knownWallet 1) (Standard.endpoints param)
 
+    callEndpoint @"addPayment" h1 ( mockWalletPaymentPubKeyHash (knownWallet 2)
+                                  , 0
+                                  )
     void $ Emulator.waitNSlots 1
 
-    callEndpoint @"addPayment" h (mockWalletPaymentPubKeyHash (knownWallet 2), 0)
-    void $ Emulator.waitNSlots 1
-
-    callEndpoint @"addPayment" h (mockWalletPaymentPubKeyHash (knownWallet 2), -10_000_000)
+    callEndpoint @"addPayment" h1 ( mockWalletPaymentPubKeyHash (knownWallet 2)
+                                  , -10_000_000
+                                  )
     void $ Emulator.waitNSlots 1
 
 -- | A trace where a payment is called with an amount greater than the funds
@@ -89,16 +111,20 @@ addPayTraceFail = do
 --   Wallet 2 calls collect but fails because there's no deposit for it.
 overSpendingTraceFail :: EmulatorTrace ()
 overSpendingTraceFail = do
-    h <- activateContractWallet (knownWallet 1) (Standard.run utxo)
-    param <- getParameter h
+    hRun <- activateContractWallet (knownWallet 1) (Standard.run utxo)
+    param <- getParameter hRun
+    h1 <- activateContractWallet (knownWallet 1) (Standard.endpoints param)
+
     h2 <- activateContractWallet (knownWallet 2) (Standard.endpoints param)
 
     void $ Emulator.waitNSlots 1
 
-    callEndpoint @"addPayment" h (mockWalletPaymentPubKeyHash (knownWallet 2), 1_100_000_000)
+    callEndpoint @"addPayment" h1 ( mockWalletPaymentPubKeyHash (knownWallet 2)
+                                  , 1_100_000_000
+                                  )
     void $ Emulator.waitNSlots 1
 
-    callEndpoint @"collect" h2 ()
+    callEndpoint @"collect" h2 $ mockWalletPaymentPubKeyHash (knownWallet 2)
     void $ Emulator.waitNSlots 1
 
 -- | Another trace that runs succesfully
@@ -107,30 +133,39 @@ overSpendingTraceFail = do
 --  Wallet 1 and 3 collects the payments.
 otherSuccTrace :: EmulatorTrace ()
 otherSuccTrace = do
-    h  <- activateContractWallet (knownWallet 1) (Standard.run utxo)
-    param <- getParameter h
+    hRun <- activateContractWallet (knownWallet 1) (Standard.run utxo)
+    param <- getParameter hRun
+    h1 <- activateContractWallet (knownWallet 1) (Standard.endpoints param)
     h2 <- activateContractWallet (knownWallet 2) (Standard.endpoints param)
     h3 <- activateContractWallet (knownWallet 3) (Standard.endpoints param)
 
     void $ Emulator.waitNSlots 1
 
-    callEndpoint @"addPayment" h3 (mockWalletPaymentPubKeyHash (knownWallet 2), 1_000_000)
+    callEndpoint @"addPayment" h3 ( mockWalletPaymentPubKeyHash (knownWallet 2)
+                                  , 1_000_000
+                                  )
     void $ Emulator.waitNSlots 1
 
-    callEndpoint @"addPayment" h3 (mockWalletPaymentPubKeyHash (knownWallet 2), 1_000_000)
+    callEndpoint @"addPayment" h3 ( mockWalletPaymentPubKeyHash (knownWallet 2)
+                                  , 1_000_000
+                                  )
     void $ Emulator.waitNSlots 1
 
-    callEndpoint @"collect" h2 ()
+    callEndpoint @"collect" h2 $ mockWalletPaymentPubKeyHash (knownWallet 2)
     void $ Emulator.waitNSlots 1
 
-    callEndpoint @"addPayment" h2 (mockWalletPaymentPubKeyHash (knownWallet 3), 1_000_000)
+    callEndpoint @"addPayment" h2 ( mockWalletPaymentPubKeyHash (knownWallet 3)
+                                  , 1_000_000
+                                  )
     void $ Emulator.waitNSlots 1
 
-    callEndpoint @"addPayment" h2 (mockWalletPaymentPubKeyHash (knownWallet 1), 1_000_000)
+    callEndpoint @"addPayment" h2 ( mockWalletPaymentPubKeyHash (knownWallet 1)
+                                  , 1_000_000
+                                  )
     void $ Emulator.waitNSlots 1
 
-    callEndpoint @"collect" h ()
+    callEndpoint @"collect" h1 $ mockWalletPaymentPubKeyHash (knownWallet 1)
     void $ Emulator.waitNSlots 1
 
-    callEndpoint @"collect" h3 ()
+    callEndpoint @"collect" h3 $ mockWalletPaymentPubKeyHash (knownWallet 3)
     void $ Emulator.waitNSlots 1

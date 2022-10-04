@@ -1,3 +1,11 @@
+{-|
+Module      : Main
+Description : Definition of contract script.
+Copyright   : (c) 2022 IDYIA LLC dba Plank
+Maintainer  : sos@joinplank.com
+Stability   : develop
+-}
+
 module Main ( main ) where
 
 import GHC.IO.Encoding

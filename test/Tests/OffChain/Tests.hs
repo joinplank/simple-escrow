@@ -6,6 +6,14 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE NumericUnderscores    #-}
 
+{-|
+Module      : Tests.OffChain.Tests
+Description : Definition of contract script.
+Copyright   : (c) 2022 IDYIA LLC dba Plank
+Maintainer  : sos@joinplank.com
+Stability   : develop
+-}
+
 module Tests.OffChain.Tests where
 
 import           Data.Default              (Default (..))
@@ -32,18 +40,18 @@ tests = testGroup "Escrow Offchain tests" [testFunctionality, testBalance]
 --   if a trace run succesfully.
 testRunSucc :: String -> EmulatorTrace () ->  TestTree
 testRunSucc s = checkPredicateOptions
-        (defaultCheckOptions & emulatorConfig .~ emCfg)
-        s
-        assertNoFailedTransactions
+                (defaultCheckOptions & emulatorConfig .~ emCfg)
+                s
+                assertNoFailedTransactions
 
 -- | Function to build tests that checks the balances
 --   after running a trace
 traceBalances :: String -> EmulatorTrace () -> TracePredicate -> TestTree
 traceBalances tname trace tp = checkPredicateOptions
-        (defaultCheckOptions & emulatorConfig .~ emCfg)
-        tname
-        tp
-        trace
+                               (defaultCheckOptions & emulatorConfig .~ emCfg)
+                               tname
+                               tp
+                               trace
 
 -- | TestGroup of funcionality tests
 testFunctionality :: TestTree
