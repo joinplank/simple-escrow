@@ -291,8 +291,3 @@ source-repository-package
           web-ghc
           plutus-blockfrost
   tag: aa4eee23939eb6a7478e0960a1621d0908039f27
-
-source-repository-package
-  type: git
-  location: git@github.com:imagineai/testnet-traces.git
-  tag: c51736dc5e73d1625f5e35667655bbfcd58a0679
