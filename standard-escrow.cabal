@@ -1,0 +1,97 @@
+Cabal-Version: 2.4
+Name: standard-escrow
+Version: 0.1.0.0
+Build-Type:          Simple
+License:             Apache-2.0
+License-files:       LICENSE
+
+library
+  exposed-modules:
+      Escrow
+      , Escrow.Business
+      , Escrow.Tokens
+      , Escrow.OnChain
+      , Escrow.OffChain
+      , Escrow.Types
+      , Escrow.Validator
+      , Utils.Currency
+      , Utils.OffChain
+      , Utils.ScriptContext
+      , Utils.Currency.Minting
+      , Utils.Currency.OneShot
+
+  hs-source-dirs: src
+  ghc-options: -Wall -fobject-code -fno-ignore-interface-pragmas
+                    -fno-omit-interface-pragmas -fno-strictness
+                    -fno-spec-constr -fno-specialise -threaded
+  build-depends:       aeson
+                     , base ^>= 4.14.1.0
+                     , bytestring
+                     , playground-common
+                     , plutus-contract
+                     , plutus-ledger
+                     , plutus-pab
+                     , plutus-chain-index
+                     , ansi-terminal
+                     , data-default
+                     , lens
+                     , freer-simple
+                     , freer-extras
+                     , containers
+                     , plutus-ledger-api
+                     , plutus-tx
+                     , plutus-tx-plugin
+                     , plutus-use-cases
+                     , prettyprinter
+                     , req ^>= 3.10.0
+                     , text
+                     , uuid
+                     , tasty
+                     , mtl
+                     , openapi3
+                     , plutus-core
+                     , plutus-ledger-constraints
+                     , plutus-chain-index-core
+                     , aeson-pretty
+
+
+test-suite test
+  type:             exitcode-stdio-1.0
+  main-is:          Main.hs
+  hs-source-dirs:   test
+  other-modules: Tests.OffChain.Tests
+                 Tests.OffChain.Traces
+                 Tests.Utility
+
+  default-language: Haskell2010
+  ghc-options:   -Wall -fobject-code -fno-ignore-interface-pragmas
+                 -fno-omit-interface-pragmas -fno-strictness -fno-spec-constr
+                 -fno-specialise -threaded
+  build-depends: base ^>=4.14.1.0
+               , aeson
+               , ansi-terminal
+               , containers
+               , data-default
+               , freer-extras
+               , playground-common
+               , plutus-pab
+               , plutus-contract
+               , plutus-ledger
+               , plutus-ledger-api
+               , plutus-tx-plugin
+               , plutus-tx
+               , prettyprinter
+               , text
+               , freer-simple
+               , lens <= 4.19.2
+               , plutus-core
+               , bytestring
+               , tasty
+               , tasty-hunit
+               , QuickCheck
+               , tasty-quickcheck
+               , text
+               , prettyprinter
+               , foldl
+               , standard-escrow
+               , serialise

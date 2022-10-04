@@ -28,7 +28,6 @@ import PlutusTx.Prelude
 
 import Utils.Currency.Minting (Currency(..), MintingPolicyAction(..))
 
-
 newtype OneShot = OneShot { curTxOutRef :: TxOutRef }
   deriving stock (Generic, H.Show, H.Eq)
   deriving anyclass (ToJSON, FromJSON)
@@ -59,7 +58,6 @@ instance Currency OneShot where
                         "Does not spend the designated transaction output"
                         (spendsOutput txInfo h i)
         Burning -> False
-
 
 -- | Plutus boilerplate.
 PlutusTx.makeLift ''OneShot

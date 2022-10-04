@@ -1,3 +1,4 @@
+{- HLINT ignore "Use second" -}
 {-# LANGUAGE NoImplicitPrelude     #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RankNTypes            #-}

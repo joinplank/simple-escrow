@@ -5,8 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TupleSections         #-}
 {-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeApplications      #-}
 
 {-|
 Module      : Utils.OffChain
