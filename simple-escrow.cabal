@@ -1,5 +1,5 @@
 Cabal-Version: 2.4
-Name: standard-escrow
+Name: simple-escrow
 Version: 0.1.0.0
 Build-Type:          Simple
 License:             Apache-2.0
@@ -93,5 +93,5 @@ test-suite test
                , text
                , prettyprinter
                , foldl
-               , standard-escrow
+               , simple-escrow
                , serialise

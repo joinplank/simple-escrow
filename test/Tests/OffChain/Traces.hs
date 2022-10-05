@@ -13,15 +13,15 @@ Stability   : develop
 
 module Tests.OffChain.Traces where
 
-import           Control.Monad                     hiding (fmap)
+import Control.Monad hiding (fmap)
 
-import           Plutus.Contract.Test
-import           Plutus.Trace.Emulator             as Emulator
-import           Plutus.V1.Ledger.Api
+import Plutus.Contract.Test
+import Plutus.Trace.Emulator as Emulator
+import Plutus.V1.Ledger.Api
 
-import           Tests.Utility
+import Tests.Utility
 
-import qualified Escrow          as Standard
+import Escrow (run, endpoints)
 
 utxo :: TxOutRef
 utxo = TxOutRef
@@ -41,10 +41,10 @@ utxo1 = TxOutRef hardcodedTxHash 5
 --   Wallet 2 collects the payment.
 runTraceSucc :: EmulatorTrace ()
 runTraceSucc = do
-    hRun  <- activateContractWallet (knownWallet 1) (Standard.run utxo)
+    hRun  <- activateContractWallet (knownWallet 1) (run utxo)
     param <- getParameter hRun
-    h2 <- activateContractWallet (knownWallet 2) (Standard.endpoints param)
-    h3 <- activateContractWallet (knownWallet 3) (Standard.endpoints param)
+    h2 <- activateContractWallet (knownWallet 2) (endpoints param)
+    h3 <- activateContractWallet (knownWallet 3) (endpoints param)
 
     void $ Emulator.waitNSlots 1
 
@@ -68,10 +68,10 @@ runTraceSucc = do
 --   Wallet 2 calls collect but fails.
 collectTraceFail :: EmulatorTrace ()
 collectTraceFail = do
-    hRun  <- activateContractWallet (knownWallet 1) (Standard.run utxo)
+    hRun  <- activateContractWallet (knownWallet 1) (run utxo)
     param <- getParameter hRun
-    h1 <- activateContractWallet (knownWallet 1) (Standard.endpoints param)
-    h2 <- activateContractWallet (knownWallet 2) (Standard.endpoints param)
+    h1 <- activateContractWallet (knownWallet 1) (endpoints param)
+    h2 <- activateContractWallet (knownWallet 2) (endpoints param)
 
     void $ Emulator.waitNSlots 1
 
@@ -89,9 +89,9 @@ collectTraceFail = do
 --   Wallet 1 tries to add a payment with -10 Ada but fails.
 addPayTraceFail :: EmulatorTrace ()
 addPayTraceFail = do
-    hRun <- activateContractWallet (knownWallet 1) (Standard.run utxo)
+    hRun <- activateContractWallet (knownWallet 1) (run utxo)
     param <- getParameter hRun
-    h1 <- activateContractWallet (knownWallet 1) (Standard.endpoints param)
+    h1 <- activateContractWallet (knownWallet 1) (endpoints param)
 
     callEndpoint @"addPayment" h1 ( mockWalletPaymentPubKeyHash (knownWallet 2)
                                   , 0
@@ -111,11 +111,11 @@ addPayTraceFail = do
 --   Wallet 2 calls collect but fails because there's no deposit for it.
 overSpendingTraceFail :: EmulatorTrace ()
 overSpendingTraceFail = do
-    hRun <- activateContractWallet (knownWallet 1) (Standard.run utxo)
+    hRun <- activateContractWallet (knownWallet 1) (run utxo)
     param <- getParameter hRun
-    h1 <- activateContractWallet (knownWallet 1) (Standard.endpoints param)
+    h1 <- activateContractWallet (knownWallet 1) (endpoints param)
 
-    h2 <- activateContractWallet (knownWallet 2) (Standard.endpoints param)
+    h2 <- activateContractWallet (knownWallet 2) (endpoints param)
 
     void $ Emulator.waitNSlots 1
 
@@ -133,11 +133,11 @@ overSpendingTraceFail = do
 --  Wallet 1 and 3 collects the payments.
 otherSuccTrace :: EmulatorTrace ()
 otherSuccTrace = do
-    hRun <- activateContractWallet (knownWallet 1) (Standard.run utxo)
+    hRun <- activateContractWallet (knownWallet 1) (run utxo)
     param <- getParameter hRun
-    h1 <- activateContractWallet (knownWallet 1) (Standard.endpoints param)
-    h2 <- activateContractWallet (knownWallet 2) (Standard.endpoints param)
-    h3 <- activateContractWallet (knownWallet 3) (Standard.endpoints param)
+    h1 <- activateContractWallet (knownWallet 1) (endpoints param)
+    h2 <- activateContractWallet (knownWallet 2) (endpoints param)
+    h3 <- activateContractWallet (knownWallet 3) (endpoints param)
 
     void $ Emulator.waitNSlots 1
 

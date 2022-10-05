@@ -19,7 +19,7 @@ main = do
     defaultMain Main.tests
 
 tests :: TestTree
-tests = testGroup "Escrow tests" [ standardOffChainTests ]
+tests = testGroup "Escrow tests" [ escrowOffChainTests ]
 
-standardOffChainTests :: TestTree
-standardOffChainTests = testGroup "Offchain tests" [ Tests.OffChain.Tests.tests ]
+escrowOffChainTests :: TestTree
+escrowOffChainTests = testGroup "Offchain tests" [ Tests.OffChain.Tests.tests ]
