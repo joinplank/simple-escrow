@@ -273,21 +273,15 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/joinplank/plutus-apps.git
-  subdir: doc
-          freer-extras
+  subdir: freer-extras
           playground-common
           plutus-chain-index
           plutus-chain-index-core
           plutus-contract
-          plutus-example
-          plutus-contract-certification
           plutus-ledger
           plutus-ledger-constraints
           plutus-pab
-          plutus-pab-executables
-          plutus-playground-server
-          plutus-use-cases
+          plutus-blockfrost
           quickcheck-dynamic
           web-ghc
-          plutus-blockfrost
   tag: aa4eee23939eb6a7478e0960a1621d0908039f27

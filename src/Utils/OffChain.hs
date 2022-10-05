@@ -5,7 +5,6 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TupleSections         #-}
 {-# LANGUAGE LambdaCase            #-}
-{-# LANGUAGE TypeApplications      #-}
 
 {-|
 Module      : Utils.OffChain
@@ -27,11 +26,10 @@ import           Prelude           hiding ((*))
 
 import           Ledger            hiding (singleton)
 import           Ledger.Value
-import qualified Ledger.Ada        as Ada
+import qualified Ledger.Ada         as Ada
 import           Ledger.Constraints as Constraints
 import           Ledger.Typed.Scripts
 import qualified PlutusTx
-import           PlutusTx.Prelude (modulo)
 import           Plutus.Contract
 import           PlutusTx.Numeric  as Num
 
@@ -100,31 +98,6 @@ minAdaTimes n = let Ada.Lovelace {Ada.getLovelace = m} = Ledger.minAdaTxOut
 negativeMinAdaTimes :: Integer -> Value
 negativeMinAdaTimes = minAdaTimes . Num.negate
 
-selectRandom :: AsContractError e => [a] -> Contract w s e (Maybe a)
-selectRandom [] = return Nothing
-selectRandom xs = do
-    t <- currentTime
-    return . Just $ xs !! fromIntegral (getPOSIXTime t `modulo` toInteger (length xs))
-
-submitTxConstraintsWithLogging
-    :: ( PlutusTx.FromData (DatumType a)
-       , PlutusTx.ToData (DatumType a)
-       , PlutusTx.ToData (RedeemerType a)
-       )
-    => ScriptLookups a
-    -> TxConstraints (RedeemerType a) (DatumType a)
-    -> Contract w s Text ()
-submitTxConstraintsWithLogging lkp tx = case mkTx lkp tx of
-    Left e -> logInfo @String $ show e
-    Right utx -> balanceTx utx >>= \cardanoTx -> do
-        logInfo @String $ "Unbalanced tx -> " ++ show utx
-        logInfo @String $ "Balanced tx -> " ++ show cardanoTx
-        void $ submitBalancedTx cardanoTx
-
-isCustodial :: Bool
-isCustodial = False
-
---  Performs transaction submission, which depends on the value of isCustodial.
 handleTxConstraints :: ( PlutusTx.ToData (RedeemerType a)
                        , PlutusTx.FromData (DatumType a)
                        , PlutusTx.ToData (DatumType a)
@@ -133,6 +106,5 @@ handleTxConstraints :: ( PlutusTx.ToData (RedeemerType a)
                     -> TxConstraints (RedeemerType a)
                                      (DatumType a)
                     -> Contract w s T.Text ()
-handleTxConstraints lkp tx
-  | isCustodial = void $ submitTxConstraintsWith lkp tx
-  | otherwise = mkTxConstraints lkp tx >>= yieldUnbalancedTx . adjustUnbalancedTx
+handleTxConstraints lkp tx = mkTxConstraints lkp tx >>=
+                             yieldUnbalancedTx . adjustUnbalancedTx

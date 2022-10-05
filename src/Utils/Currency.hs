@@ -9,25 +9,17 @@ module Utils.Currency
     , CurrencyError(..)
     , AsCurrencyError(..)
         -- | Minting functions
-    , mintCurrencyWithPpkh
-    , mintNFTWithPpkh
     , mintNFTWithUTxO
     , mintCurrencyWithUTxO
-    , burnNFT
-    , burnCurrency
     ) where
 
-import Utils.Currency.Minting        ( Currency(..)
-                                     , MintingPolicyAction(..)
-                                     , curSymbol
-                                     , mintNFTWithPpkh
-                                     , mintCurrencyWithPpkh
-                                     , mintNFTWithUTxO
-                                     , mintCurrencyWithUTxO
-                                     , burnNFT
-                                     , burnCurrency
-                                     , AsCurrencyError(..)
-                                     , CurrencyError(..)
-                                     )
+import Utils.Currency.Minting ( Currency(..)
+                              , MintingPolicyAction(..)
+                              , curSymbol
+                              , mintNFTWithUTxO
+                              , mintCurrencyWithUTxO
+                              , AsCurrencyError(..)
+                              , CurrencyError(..)
+                              )
 
-import Utils.Currency.OneShot        (OneShot)
+import Utils.Currency.OneShot (OneShot)

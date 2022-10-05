@@ -27,33 +27,29 @@ library
   build-depends:       aeson
                      , base ^>= 4.14.1.0
                      , bytestring
-                     , playground-common
                      , plutus-contract
                      , plutus-ledger
                      , plutus-pab
                      , plutus-chain-index
+                     , plutus-ledger-api
+                     , plutus-tx
+                     , plutus-tx-plugin
+                     , plutus-core
+                     , plutus-ledger-constraints
+                     , plutus-chain-index-core
                      , ansi-terminal
                      , data-default
                      , lens
                      , freer-simple
                      , freer-extras
                      , containers
-                     , plutus-ledger-api
-                     , plutus-tx
-                     , plutus-tx-plugin
-                     , plutus-use-cases
-                     , prettyprinter
-                     , req ^>= 3.10.0
+                     , req
                      , text
                      , uuid
                      , tasty
                      , mtl
                      , openapi3
-                     , plutus-core
-                     , plutus-ledger-constraints
-                     , plutus-chain-index-core
                      , aeson-pretty
-
 
 test-suite test
   type:             exitcode-stdio-1.0
@@ -73,25 +69,18 @@ test-suite test
                , containers
                , data-default
                , freer-extras
-               , playground-common
-               , plutus-pab
                , plutus-contract
                , plutus-ledger
                , plutus-ledger-api
-               , plutus-tx-plugin
-               , plutus-tx
-               , prettyprinter
                , text
                , freer-simple
-               , lens <= 4.19.2
-               , plutus-core
+               , lens
                , bytestring
                , tasty
                , tasty-hunit
                , QuickCheck
                , tasty-quickcheck
                , text
-               , prettyprinter
                , foldl
                , simple-escrow
                , serialise

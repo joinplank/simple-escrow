@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications  #-}
 
 {-|
 Module      : Escrow.Tokens
@@ -11,15 +10,8 @@ Stability   : develop
 
 module Escrow.Tokens where
 
-import Data.Text
-
-import Ledger                                hiding (singleton)
-import Ledger.Value              as Value
-import Plutus.Contract           as Contract
-
-import Utils.Currency as Currency
-import Plutus.Contracts.Currency
-
+import Ledger       hiding (singleton)
+import Ledger.Value as Value
 
 -- | Token name for the contract NFT.
 escrowTokenName :: TokenName
@@ -28,11 +20,3 @@ escrowTokenName = "escrowToken"
 -- | Gets only the value of the given asset class.
 getValueOf :: AssetClass -> Value -> Value
 getValueOf asc v = assetClassValue asc $ assetClassValueOf v asc
-
--- | Utility for forging an NFT.
-forgeNFT
-    :: PaymentPubKeyHash
-    -> TokenName
-    -> Contract w s Text OneShotCurrency
-forgeNFT pkh tkn = mapError (pack . show @Currency.CurrencyError) $
-                   mintContract pkh [(tkn, 1)]

@@ -26,7 +26,6 @@ import           GHC.Generics     (Generic)
 import qualified PlutusTx
 import           PlutusTx.Prelude hiding (Semigroup(..), unless, mapM)
 import           Ledger           hiding (singleton)
-import           Schema
 import qualified Ledger.Ada        as Ada
 
 import qualified Prelude          as HP
@@ -41,7 +40,7 @@ import           Escrow.Business
 
 newtype Parameter = Parameter { stateNFT  :: AssetClass }
     deriving (Generic, HP.Show, HP.Eq, HP.Ord)
-    deriving anyclass (FromJSON, ToJSON, ToSchema)
+    deriving anyclass (FromJSON, ToJSON)
 
 instance Eq Parameter where
   {-# INLINABLE (==) #-}

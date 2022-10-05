@@ -184,49 +184,6 @@ isSingleton :: [a] -> Bool
 isSingleton [_] = True
 isSingleton _ = False
 
-{-# INLINABLE printValues #-}
-printValues :: [Value] -> BuiltinString
-printValues = foldr (\ v -> appendString (printValue v `appendString` " | "))
-                    ""
-
-{-# INLINABLE printValue #-}
-printValue :: Value -> BuiltinString
-printValue v = decodeUtf8 $ foldr printCS "mempty" l
-  where
-    l :: [(CurrencySymbol, [(TokenName, Integer)])]
-    l = map (\(cs, m) -> (cs, M.toList m)) $ M.toList $ getValue v
-
--- Convert from an integer to its text representation. Example: 123 => "123"
-{-# INLINABLE integerToBS #-}
-integerToBS :: Integer -> BuiltinByteString
-integerToBS x
-  -- 45 is ASCII code for '-'
-  | x < 0 = consByteString 45 $ integerToBS (negate x)
-  -- x is single-digit
-  | x `quotient` 10 == 0 = digitToBS x
-  | otherwise = integerToBS (x `quotient` 10) <> digitToBS (x `remainder` 10)
-  where
-    digitToBS :: Integer -> BuiltinByteString
-    -- 48 is ASCII code for '0'
-    digitToBS d = consByteString (d + 48) emptyByteString
-
-{-# INLINABLE printTKs #-}
-printTKs :: [(TokenName, Integer)] -> BuiltinByteString
-printTKs tkns = unwords ["[ ", foldr printTK "" tkns, " ]"]
-  where
-    printTK :: (TokenName, Integer) -> BuiltinByteString -> BuiltinByteString
-    printTK (tkn, i) b = unwords [unTokenName tkn, ": ", integerToBS i, ", ", b]
-
-{-# INLINABLE unwords #-}
-unwords :: [BuiltinByteString] -> BuiltinByteString
-unwords = foldr appendByteString ""
-
-{-# INLINABLE printCS #-}
-printCS :: (CurrencySymbol, [(TokenName, Integer)])
-        -> BuiltinByteString
-        -> BuiltinByteString
-printCS (_, tks) b = unwords [printTKs tks, ", " , b]
-
 {-# INLINABLE drop #-}
 drop :: Integer -> [a] -> [a]
 drop _ [] = []
