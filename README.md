@@ -24,11 +24,16 @@ Main UTxO:
 - `addPayment`: given a payment-pubkeyhash `pkh` and an integer `m`, it submits
    a transaction paying to the script  `m` lovelaces and modifying the state specifying
    that now `pkh` has `m` additional lovelaces.
+
+   ![addPayment](images/AddPayment.png)
+
 - `collect`: given a payment-pubkeyhash `pkh`, it submits a transaction spending
    the script-utxo and collecting the number of lovelaces specified in the state,
    corresponding to the pub key `pkh` signing the transaction.
    If the transaction can be submitted, the state is modified deleting the map
    association `pkh ↦ m` corresponding to the signer.
+
+   ![collect](images/Collect.png)
 
 ## Congestion
 
