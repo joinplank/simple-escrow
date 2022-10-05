@@ -1,3 +1,11 @@
+{-|
+Module      : Utils.Currency
+Description : Minting and burning currency abstraction.
+Copyright   : (c) 2022 IDYIA LLC dba Plank
+Maintainer  : opensource@joinplank.com
+Stability   : develop
+-}
+
 module Utils.Currency
     (   -- | Currency functions
       Currency(..)

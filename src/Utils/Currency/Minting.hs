@@ -11,6 +11,14 @@
 {-# LANGUAGE TupleSections                  #-}
 {-# OPTIONS_GHC -fno-ignore-interface-pragmas #-}
 
+{-|
+Module      : Utils.Currency.Minting
+Description : Minting and burning currency abstraction.
+Copyright   : (c) 2022 IDYIA LLC dba Plank
+Maintainer  : opensource@joinplank.com
+Stability   : develop
+-}
+
 module Utils.Currency.Minting (
       Currency(..)
     , MintingPolicyAction(..)

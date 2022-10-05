@@ -4,7 +4,7 @@
 Module      : Escrow.Tokens
 Description : Definition of token names and utilities.
 Copyright   : (c) 2022 IDYIA LLC dba Plank
-Maintainer  : sos@joinplank.com
+Maintainer  : opensource@joinplank.com
 Stability   : develop
 -}
 

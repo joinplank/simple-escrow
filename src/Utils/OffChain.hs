@@ -10,7 +10,7 @@
 Module      : Utils.OffChain
 Description : Common off-chain functions.
 Copyright   : (c) 2021 IDYIA LLC dba Plank
-Maintainer  : sos@joinplank.com
+Maintainer  : opensource@joinplank.com
 Stability   : develop
 -}
 

@@ -1,3 +1,11 @@
+{-|
+Module      : Escrow
+Description : Escrow Contract (congestive version).
+Copyright   : (c) 2022 IDYIA LLC dba Plank
+Maintainer  : opensource@joinplank.com
+Stability   : develop
+-}
+
 module Escrow
     ( module Escrow.Types
     , module Escrow.Business

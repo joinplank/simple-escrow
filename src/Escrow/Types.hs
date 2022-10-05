@@ -12,7 +12,7 @@
 Module      : Escrow.Types
 Description : data types for Escrow Contract.
 Copyright   : (c) 2022 IDYIA LLC dba Plank
-Maintainer  : sos@joinplank.com
+Maintainer  : opensource@joinplank.com
 Stability   : develop
 
 We define the main types used in the contract.

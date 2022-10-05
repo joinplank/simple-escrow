@@ -6,7 +6,7 @@
 Module      : Escrow.Business
 Description : Business logic for escrow contract (congestive version).
 Copyright   : (c) 2022 IDYIA LLC dba Plank
-Maintainer  : sos@joinplank.com
+Maintainer  : opensource@joinplank.com
 Stability   : develop
 
 We define in this module any business logic of the contract. This is

@@ -6,7 +6,7 @@
 Module      : Utils.OnChain
 Description : Useful functions about script contexts.
 Copyright   : (c) 2022 IDYIA LLC dba Plank
-Maintainer  : sos@joinplank.com
+Maintainer  : opensource@joinplank.com
 Stability   : develop
 
 Common functions for manipulating script context.

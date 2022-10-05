@@ -10,7 +10,7 @@
 Module      : Escrow.OffChain
 Description : OffChain code for Escrow Contract (congestive version).
 Copyright   : (c) 2022 IDYIA LLC dba Plank
-Maintainer  : sos@joinplank.com
+Maintainer  : opensource@joinplank.com
 Stability   : develop
 
 We define here the interface for accessing the contract functions through

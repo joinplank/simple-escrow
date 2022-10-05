@@ -11,8 +11,14 @@
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeApplications      #-}
 
-{-| Functions related to OneShot currency (analogous to OneShotCurrency of
-    Plutus).
+{-|
+Module      : Utils.Currency.OneShot
+Description : Minting and burning currency abstraction.
+Copyright   : (c) 2022 IDYIA LLC dba Plank
+Maintainer  : opensource@joinplank.com
+Stability   : develop
+
+Functions related to OneShot currency (analogous to OneShotCurrency of Plutus)
 -}
 module Utils.Currency.OneShot
     ( OneShot
