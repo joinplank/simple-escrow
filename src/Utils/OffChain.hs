@@ -89,6 +89,10 @@ getChainIndexTxOutDatum ciTxOut =
         Right (_,_,Right d,_) -> PlutusTx.fromBuiltinData $ getDatum d
         _ -> Nothing
 
+-- | Gets only the value of the given asset class.
+getValueOf :: AssetClass -> Value -> Value
+getValueOf asc v = assetClassValue asc $ assetClassValueOf v asc
+
 {-# INLINABLE minAdaTimes #-}
 minAdaTimes :: Integer -> Value
 minAdaTimes n = let Ada.Lovelace {Ada.getLovelace = m} = Ledger.minAdaTxOut
@@ -98,6 +102,9 @@ minAdaTimes n = let Ada.Lovelace {Ada.getLovelace = m} = Ledger.minAdaTxOut
 negativeMinAdaTimes :: Integer -> Value
 negativeMinAdaTimes = minAdaTimes . Num.negate
 
+{- | Given some lookups and tx-constraints, builds the unbalance transaction,
+     adjust the output UTxOs with min-ada (if needed), and yield it.
+-}
 handleTxConstraints :: ( PlutusTx.ToData (RedeemerType a)
                        , PlutusTx.FromData (DatumType a)
                        , PlutusTx.ToData (DatumType a)

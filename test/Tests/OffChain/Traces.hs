@@ -28,13 +28,6 @@ utxo = TxOutRef
        "2616739c718145f994953df69175f18ad3deef2751fb2572babf2fbe361cd0d6"
        50
 
-utxo1 :: TxOutRef
-utxo1 = TxOutRef hardcodedTxHash 5
-  where
-    hardcodedTxHash :: TxId
-    hardcodedTxHash =
-        "034cc188fb271a54edb736990966de087e32279015cb46cc7a6ce4597469d0ed"
-
 -- | A trace that runs succesfully and it's balanced.
 --   Wallet 1 starts the contract.
 --   Wallet 3 adds a payment of 1 Ada for Wallet 2, twice.

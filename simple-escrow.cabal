@@ -9,7 +9,6 @@ library
   exposed-modules:
       Escrow
       , Escrow.Business
-      , Escrow.Tokens
       , Escrow.OnChain
       , Escrow.OffChain
       , Escrow.Types

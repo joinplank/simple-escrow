@@ -60,6 +60,10 @@ instance Eq EscrowDatum where
 mkEscrowDatum :: EscrowState -> EscrowDatum
 mkEscrowDatum st = EscrowDatum { eState = st }
 
+-- | Token name for the contract NFT.
+escrowTokenName :: TokenName
+escrowTokenName = "escrowToken"
+
 -- | Escrow Redeemer. Necessary for knowing which operation is being validated
 --   when a script-utxo is spent.
 data EscrowRedeemer = AddPayRedeemer !PaymentPubKeyHash !Integer

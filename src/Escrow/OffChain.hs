@@ -39,7 +39,6 @@ import           Utils.OffChain
 import           Escrow.Business
 import           Escrow.Types
 import           Escrow.Validator
-import           Escrow.Tokens
 
 -- | Contract Schema
 type EscrowSchema = Endpoint "addPayment" (PaymentPubKeyHash,Integer)
