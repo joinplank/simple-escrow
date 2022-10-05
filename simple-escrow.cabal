@@ -16,7 +16,7 @@ library
       , Escrow.Validator
       , Utils.Currency
       , Utils.OffChain
-      , Utils.ScriptContext
+      , Utils.OnChain
       , Utils.Currency.Minting
       , Utils.Currency.OneShot
 

@@ -22,7 +22,7 @@ import           PlutusTx.Prelude
 -- Internal modules.
 import           Escrow.Business
 import           Escrow.Types
-import           Utils.ScriptContext
+import           Utils.OnChain
 
 {-# INLINABLE mkEscrowValidator #-}
 mkEscrowValidator
@@ -50,12 +50,11 @@ validateAddPay
     -> ScriptContext
     -> Bool
 validateAddPay p st pkh m ctx =
-    traceIfFalse "checkAddPayment: NFT missing in the output UTxO."
-                 (outputHasNFT (stateNFT p) ctx)
-        && traceIfFalse "checkAddPayment: Output UTxO datum is wrong."
-                        checkDatum
-        && traceIfFalse "checkAddPayment: Amount paid is wrong." checkValue
-        && traceIfFalse "checkAddPayment: Tokens are minted."    checkMinting
+       debug "checkAddPayment: NFT missing in the output UTxO."
+           (outputHasNFT (stateNFT p) ctx)
+    && debug "checkAddPayment: Output UTxO datum is wrong." checkDatum
+    && debug "checkAddPayment: Amount paid is wrong."       checkValue
+    && debug "checkAddPayment: Tokens are minted."          checkMinting
   where
     input, output :: TxOut
     input = case findOwnInput ctx of
@@ -102,13 +101,12 @@ validateAddPay p st pkh m ctx =
 {-# INLINABLE validateCollect #-}
 validateCollect :: Parameter -> EscrowState -> ScriptContext -> Bool
 validateCollect p st ctx =
-    traceIfFalse "checkCollect: NFT missing in the output UTxO."
-                 (outputHasNFT (stateNFT p) ctx)
-        && traceIfFalse "checkCollect: Output UTxO datum is wrong." checkDatum
-        && traceIfFalse "checkCollect: Amount collected is wrong."  checkValue
-        && traceIfFalse "checkCollect: The signer's pkh was not found."
-                        pkhHasDeposit
-        && traceIfFalse "checkCollect: Tokens are minted." checkMinting
+       debug "checkCollect: NFT missing in the output UTxO."
+           (outputHasNFT (stateNFT p) ctx)
+    && debug "checkCollect: Output UTxO datum is wrong."     checkDatum
+    && debug "checkCollect: Amount collected is wrong."      checkValue
+    && debug "checkCollect: The signer's pkh was not found." pkhHasDeposit
+    && debug "checkCollect: Tokens are minted."              checkMinting
   where
     input, output :: TxOut
     input = case findOwnInput ctx of

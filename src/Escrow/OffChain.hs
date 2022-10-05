@@ -72,7 +72,6 @@ start txRef = do
     (nftContract, nftLkp, nftTx) <- mintCurrencyWithUTxO @OneShot
                                                          [(escrowTokenName,1)]
                                                          txRef
-
     logInfo @String "Starting contract"
     logInfo @String $ "Contract NFT: " ++ show nftContract
 
@@ -88,7 +87,6 @@ start txRef = do
               , Constraints.otherScript (escrowValidator parameter)
               , nftLkp
               ]
-
         tx  = mconcat
               [ Constraints.mustPayToTheScript datum val
               , nftTx
@@ -119,16 +117,16 @@ addPaymentOp p (pkh, m) = do
                     scriptValue = outxo ^. ciTxOutValue <> lovelaceValueOf m
 
                     lkp = contractLookups p [(oref,outxo)]
-                    tx = mconcat
-                         [ Constraints.mustSpendScriptOutput oref (addPayRedeemer pkh m)
-                         , Constraints.mustPayToTheScript upDatum scriptValue
-                         ]
+                    tx  = mconcat
+                          [ Constraints.mustSpendScriptOutput oref (addPayRedeemer pkh m)
+                          , Constraints.mustPayToTheScript upDatum scriptValue
+                          ]
 
                 handleTxConstraints @Escrowing lkp tx
                 logInfo @String "Payment operation submitted successfully"
 
--- | Collects the amount specified in the state for the signer's
---   public key, if it exists.
+-- | Collects the amount specified in the state for the signer's public key, if
+--   it exists.
 collectOp
     :: forall w s
     .  Parameter
@@ -142,15 +140,15 @@ collectOp p pkh = do
         Nothing -> logError @String
                    "Collect operation failed: signer not in state"
         Just (st,val) -> do
-            let upDatum        = mkEscrowDatum st
-                scriptValue    = outxo ^. ciTxOutValue PNum.- lovelaceValueOf val
+            let upDatum     = mkEscrowDatum st
+                scriptValue = outxo ^. ciTxOutValue PNum.- lovelaceValueOf val
 
                 lkp = contractLookups p [(oref,outxo)]
-                tx = mconcat
-                     [ Constraints.mustSpendScriptOutput oref collectRedeemer
-                     , Constraints.mustPayToTheScript upDatum scriptValue
-                     , Constraints.mustBeSignedBy pkh
-                     ]
+                tx  = mconcat
+                      [ Constraints.mustSpendScriptOutput oref collectRedeemer
+                      , Constraints.mustPayToTheScript upDatum scriptValue
+                      , Constraints.mustBeSignedBy pkh
+                      ]
 
             handleTxConstraints @Escrowing lkp tx
             logInfo @String "Collect operation submitted successfully"

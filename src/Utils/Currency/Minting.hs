@@ -157,4 +157,6 @@ mintTxWithUTxO amounts ref = mapError (review _CurrencyError) .
         PublicKeyChainIndexTxOut{} -> Constraints.mustSpendPubKeyOutput ref_
         ScriptChainIndexTxOut{}    -> H.mempty
 
-PlutusTx.unstableMakeIsData ''MintingPolicyAction
+PlutusTx.makeIsDataIndexed ''MintingPolicyAction [ ('Minting, 0)
+                                                 , ('Burning, 1)
+                                                 ]

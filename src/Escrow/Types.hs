@@ -33,11 +33,7 @@ import qualified Prelude          as HP
 import           Escrow.Business
 
 -- | Contract Parameter
---   The parameter consists of fixed information which
---   will identify uniquely an instance of the smart contract.
---   Tipically you put here the NFTs identifying the unique utxos
---   where the contract state is located or distributed;
-
+--   The NFT identifying the unique utxo where the contract state is located.
 newtype Parameter = Parameter { stateNFT  :: AssetClass }
     deriving (Generic, HP.Show, HP.Eq, HP.Ord)
     deriving anyclass (FromJSON, ToJSON)
@@ -50,8 +46,7 @@ instance Eq Parameter where
 mkParameter :: AssetClass -> Parameter
 mkParameter ac = Parameter { stateNFT  = ac }
 
--- | Escrow datum. It contains the state of the contract,
---   stored in a utxo.
+-- | Escrow datum. It contains the state of the contract, stored in a utxo.
 newtype EscrowDatum = EscrowDatum { eState :: EscrowState }
     deriving (Generic, HP.Show, HP.Eq)
     deriving anyclass (FromJSON, ToJSON)
@@ -65,8 +60,8 @@ instance Eq EscrowDatum where
 mkEscrowDatum :: EscrowState -> EscrowDatum
 mkEscrowDatum st = EscrowDatum { eState = st }
 
--- | Escrow Redeemer. Necessary for knowing which operation
---   is being validated when a script-utxo is spent.
+-- | Escrow Redeemer. Necessary for knowing which operation is being validated
+--   when a script-utxo is spent.
 data EscrowRedeemer = AddPayRedeemer !PaymentPubKeyHash !Integer
                     | CollectRedeemer
     deriving (Generic, HP.Show)
@@ -86,5 +81,7 @@ minAda :: Value
 minAda = Ada.toValue Ledger.minAdaTxOut
 
 PlutusTx.makeLift ''Parameter
-PlutusTx.unstableMakeIsData ''EscrowDatum
-PlutusTx.unstableMakeIsData ''EscrowRedeemer
+PlutusTx.makeIsDataIndexed ''EscrowDatum    [ ('EscrowDatum, 0) ]
+PlutusTx.makeIsDataIndexed ''EscrowRedeemer [ ('AddPayRedeemer, 0)
+                                            , ('CollectRedeemer, 1)
+                                            ]

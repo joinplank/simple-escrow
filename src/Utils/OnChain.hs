@@ -1,10 +1,9 @@
-{- HLINT ignore "Use second" -}
 {-# LANGUAGE NoImplicitPrelude     #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RankNTypes            #-}
 
 {-|
-Module      : Utils.ScriptContext
+Module      : Utils.OnChain
 Description : Useful functions about script contexts.
 Copyright   : (c) 2022 IDYIA LLC dba Plank
 Maintainer  : sos@joinplank.com
@@ -13,7 +12,7 @@ Stability   : develop
 Common functions for manipulating script context.
 -}
 
-module Utils.ScriptContext where
+module Utils.OnChain where
 
 
 import           Ledger            hiding (singleton)
@@ -192,7 +191,7 @@ drop n l@(_:xs) | n == 0    = l
 
 {-# INLINABLE debug #-}
 debug :: BuiltinString -> Bool -> Bool
-debug = const id -- traceIfFalse
+debug = traceIfFalse -- const id
 
 {-# INLINABLE fromJust #-}
 fromJust :: Maybe a -> a

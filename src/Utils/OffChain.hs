@@ -45,7 +45,7 @@ lookupScriptUtxos
     -> Contract w s Text [(TxOutRef, ChainIndexTxOut)]
 lookupScriptUtxos addr nft =
     utxosAt addr >>=
-    (mapM (\ (oref, o) -> ciTxOutDatum loadDatum o <&> (oref,)) . Map.toList)
+    (mapM (\(oref, o) -> ciTxOutDatum loadDatum o <&> (oref,)) . Map.toList)
     . Map.filter (checkTxHasNFT nft . (^. ciTxOutValue))
   where
     loadDatum

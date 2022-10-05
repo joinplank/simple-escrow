@@ -46,8 +46,8 @@ initialEscrowState = AM.empty
 retrieveVal :: PaymentPubKeyHash -> EscrowState -> Integer
 retrieveVal pkh st = Prelude.fromMaybe 0 $ AM.lookup pkh st
 
--- | Returns the PaymentPubKeyHash of
---   all the possible receivers in the EscrowState
+-- | Returns the PaymentPubKeyHash of all the possible receivers in the
+--   EscrowState
 {-# INLINABLE receivers #-}
 receivers :: EscrowState -> [PaymentPubKeyHash]
 receivers = AM.keys
