@@ -10,12 +10,17 @@ module Main ( main ) where
 
 import GHC.IO.Encoding
 import Test.Tasty
+import Test.QuickCheck
 
 import Tests.OffChain.Tests
+import Tests.Prop.Escrow
 
 main :: IO ()
 main = do
     setLocaleEncoding utf8
+    putStrLn "----- BEGIN QUICKCHECK TESTS -----"
+    quickCheck propEscrow
+    putStrLn "----- BEGIN OFFCHAIN TESTS -----"
     defaultMain Main.tests
 
 tests :: TestTree
