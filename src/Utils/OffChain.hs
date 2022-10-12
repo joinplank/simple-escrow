@@ -25,12 +25,13 @@ import           Control.Monad
 import           Prelude           hiding ((*))
 
 import           Ledger            hiding (singleton)
-import           Ledger.Value
 import qualified Ledger.Ada         as Ada
 import           Ledger.Constraints as Constraints
+import           Ledger.Scripts
 import           Ledger.Typed.Scripts
+import           Ledger.Value
 import qualified PlutusTx
-import           Plutus.Contract
+import           Plutus.Contract   as Contract
 import           PlutusTx.Numeric  as Num
 
 {- | Off-chain function for getting a list of utxos for the given address that
@@ -113,5 +114,5 @@ handleTxConstraints :: ( PlutusTx.ToData (RedeemerType a)
                     -> TxConstraints (RedeemerType a)
                                      (DatumType a)
                     -> Contract w s T.Text ()
-handleTxConstraints lkp tx = mkTxConstraints lkp tx >>=
-                             yieldUnbalancedTx . adjustUnbalancedTx
+handleTxConstraints lkp tx = mkTxConstraints lkp tx >>= 
+                                Contract.adjustUnbalancedTx >>= yieldUnbalancedTx

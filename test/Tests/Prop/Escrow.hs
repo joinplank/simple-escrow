@@ -74,6 +74,7 @@ instance CM.ContractModel EscrowModel where
 
     nextState Start = do
         isStarted .= True
+        CM.withdraw w1 minAda
         CM.wait 3
 
     perform _ _ _ Start = CM.delay 3

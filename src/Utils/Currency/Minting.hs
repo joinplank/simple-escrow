@@ -30,23 +30,24 @@ module Utils.Currency.Minting (
     ) where
 
 import Control.Lens
-import Data.Maybe             hiding (isJust)
-import Data.Text              qualified as T
-import Data.Aeson             (FromJSON, ToJSON)
-import GHC.Generics           (Generic)
-import Prelude                ((<>))
-import Prelude                qualified as H
+import Data.Maybe                       hiding (isJust)
+import Data.Text                        qualified as T
+import Data.Aeson                       (FromJSON, ToJSON)
+import GHC.Generics                     (Generic)
+import Prelude                          ((<>))
+import Prelude                          qualified as H
 
-import PlutusTx               qualified
-import PlutusTx.Prelude       hiding (Monoid (..), Semigroup (..))
-import Plutus.Contract        as Contract
-import Plutus.V1.Ledger.Value as Value
-import Data.Map.Internal      qualified as Map
-import Ledger                 hiding (Minting)
-import Ledger.Constraints     qualified as Constraints
-import Ledger.Constraints     (ScriptLookups, TxConstraints)
-import Ledger.Contexts        qualified as V
-import Ledger.Typed.Scripts   qualified as Scripts
+import PlutusTx                         qualified
+import PlutusTx.Prelude                 hiding (Monoid (..), Semigroup (..))
+import Plutus.Contract                  as Contract
+import Plutus.Script.Utils.V1.Scripts   (scriptCurrencySymbol)
+import Plutus.V1.Ledger.Value           as Value
+import Plutus.V1.Ledger.Contexts        qualified as V
+import Data.Map.Internal                qualified as Map
+import Ledger                           hiding (Minting)
+import Ledger.Constraints               qualified as Constraints
+import Ledger.Constraints               (ScriptLookups, TxConstraints)
+import Ledger.Scripts                   qualified as Scripts
 
 newtype CurrencyError =
     CurContractError ContractError
@@ -96,8 +97,8 @@ mintedValue = foldMap . uncurry . Value.singleton . curSymbol
 -}
 data MintingPolicyAction = Minting | Burning
 
-mintingRed :: Redeemer
-mintingRed = Redeemer $ PlutusTx.toBuiltinData Minting
+mintingRed :: Scripts.Redeemer
+mintingRed = Scripts.Redeemer $ PlutusTx.toBuiltinData Minting
 
 {-| Returns lookups and constraints to mint an NFT using a specific TxOutRef.
 -}

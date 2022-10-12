@@ -26,6 +26,7 @@ module Escrow.Validator
 
 import qualified PlutusTx
 import           Ledger
+import qualified Ledger.Scripts as Scripts
 import qualified Ledger.Typed.Scripts as Scripts
 
 import           Escrow.Types
@@ -46,9 +47,9 @@ escrowInst parameter = Scripts.mkTypedValidator @Escrowing
     )
     $$(PlutusTx.compile [|| wrap ||])
   where
-    wrap = Scripts.wrapValidator @EscrowDatum @EscrowRedeemer
+    wrap = Scripts.mkUntypedValidator @EscrowDatum @EscrowRedeemer
 
-escrowValidator :: Parameter -> Validator
+escrowValidator :: Parameter -> Scripts.Validator
 escrowValidator = Scripts.validatorScript . escrowInst
 
 escrowAddress :: Parameter -> Ledger.Address

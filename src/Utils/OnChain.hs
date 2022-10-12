@@ -18,6 +18,7 @@ module Utils.OnChain where
 import           Ledger            hiding (singleton)
 import qualified Ledger.Ada        as Ada
 import           Ledger.Value      as Value
+import           Ledger.Scripts
 import qualified PlutusTx
 import qualified PlutusTx.AssocMap as M
 import           PlutusTx.Maybe    as Maybe

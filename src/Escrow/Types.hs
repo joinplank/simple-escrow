@@ -27,6 +27,7 @@ import qualified PlutusTx
 import           PlutusTx.Prelude hiding (Semigroup(..), unless, mapM)
 import           Ledger           hiding (singleton)
 import qualified Ledger.Ada        as Ada
+import           Ledger.Scripts
 
 import qualified Prelude          as HP
 

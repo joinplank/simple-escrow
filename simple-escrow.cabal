@@ -36,6 +36,7 @@ library
                      , plutus-core
                      , plutus-ledger-constraints
                      , plutus-chain-index-core
+                     , plutus-script-utils
                      , ansi-terminal
                      , data-default
                      , lens

@@ -24,12 +24,13 @@ module Utils.Currency.OneShot
     ( OneShot
     ) where
 
-import Ledger                 hiding (Minting)
-import GHC.Generics           (Generic)
-import Prelude                qualified as H
-import Data.Aeson             (ToJSON, FromJSON)
-import Ledger.Typed.Scripts   qualified as Scripts
-import PlutusTx               qualified
+import Ledger                               hiding (Minting)
+import GHC.Generics                         (Generic)
+import Prelude                              qualified as H
+import Data.Aeson                           (ToJSON, FromJSON)
+import Ledger.Scripts                       qualified as Scripts
+import Plutus.Script.Utils.V1.Typed.Scripts qualified as Scripts
+import PlutusTx                             qualified
 import PlutusTx.Prelude
 
 import Utils.Currency.Minting (Currency(..), MintingPolicyAction(..))
@@ -49,8 +50,8 @@ instance Currency OneShot where
 
     {-# INLINEABLE curPolicy #-}
     curPolicy :: OneShot -> Scripts.MintingPolicy
-    curPolicy cur = mkMintingPolicyScript $
-        $$(PlutusTx.compile [|| Scripts.wrapMintingPolicy . checkPol ||])
+    curPolicy cur = Scripts.mkMintingPolicyScript $
+        $$(PlutusTx.compile [|| Scripts.mkUntypedMintingPolicy . checkPol ||])
             `PlutusTx.applyCode` PlutusTx.liftCode cur
       where
         checkPol = checkPolicy @OneShot
