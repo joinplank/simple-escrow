@@ -14,22 +14,30 @@ module Tests.Prop.Escrow (propEscrow) where
 
 import Ledger.Value qualified as Value
 import Plutus.Contract.Schema (EmptySchema)
-import Plutus.Contract.Test (CheckOptions, defaultCheckOptions, emulatorConfig, mockWalletPaymentPubKeyHash, w1, w2, w3, w4, Wallet)
+import Plutus.Contract.Test (CheckOptions, defaultCheckOptions, emulatorConfig, mockWalletPaymentPubKeyHash, w1, w2, w3, w4, Wallet, TracePredicate, assertBlockchain)
 import Plutus.Contract.Test.ContractModel qualified as CM
 import Plutus.Trace.Emulator qualified as Trace
 import Plutus.V1.Ledger.Ada qualified as Ada
-import Plutus.V1.Ledger.Value (geq)
-import Ledger
+-- import Plutus.V1.Ledger.Contexts (TxOutRef(..))
+import Plutus.V1.Ledger.Value (geq, valueOf)
+import Ledger hiding (singleton)
 
 import Control.Lens hiding (elements)
 import Data.Data
+import Data.List (sort)
 import Data.Map qualified as Map
 import Data.Monoid (Last (..))
-import Data.Text hiding (last, filter)
-import Test.QuickCheck (Property, shrink, choose, oneof, Gen, elements)
+import Data.Text hiding (last, filter, singleton, head, length)
+import Test.QuickCheck (Property, shrink, choose, oneof, elements)
 
 import Escrow
 import Tests.Utility
+
+import qualified PlutusTx.AssocMap as AM
+import Escrow.Business()
+import Escrow.Types()
+import PlutusTx hiding (Data)
+import Ledger.Scripts
 
 -- | Harcoded AssetClass to be used in the contract parameters.
 nftAssetClass :: Value.AssetClass
@@ -142,4 +150,24 @@ instance CM.ContractModel EscrowModel where
 
 propEscrow :: CM.Actions EscrowModel -> Property
 propEscrow = CM.propRunActionsWithOptions options CM.defaultCoverageOptions
-    (\ _ -> pure True)
+    datumAssertion
+
+datumAssertion :: CM.ModelState EscrowModel -> TracePredicate
+datumAssertion s = assertBlockchain f
+  where
+    f :: [Block] -> Bool
+    f ([]:xs) = f xs
+    f [[_]] = True
+    f bs = let Valid tx = last $ head bs
+               outs = txOutputs $ _emulatorTx tx
+               dataMap = txData $ _emulatorTx tx
+               [utxo] = filter (valueContainsNFT . txOutValue) outs
+               Just datumH = txOutDatumHash utxo
+               Just eDatum = Map.lookup datumH dataMap
+               m2 = sort $ (Map.toList . Map.mapKeys mockWalletPaymentPubKeyHash) (s ^. (CM.contractState . users))
+               m1 = sort $ AM.toList ((eState $ unsafeFromBuiltinData (getDatum eDatum)) :: EscrowState)
+            in m1 == m2
+
+    valueContainsNFT :: Value -> Bool
+    valueContainsNFT v = (uncurry $ valueOf v) (Value.unAssetClass nftAssetClass) == 1
+
