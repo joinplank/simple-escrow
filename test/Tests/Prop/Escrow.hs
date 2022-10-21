@@ -9,28 +9,36 @@
 {-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE NumericUnderscores  #-}
 {-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE RankNTypes          #-}
 
 module Tests.Prop.Escrow (propEscrow) where
 
 import Ledger.Value qualified as Value
-import Plutus.Contract.Schema (EmptySchema)
-import Plutus.Contract.Test (CheckOptions, defaultCheckOptions, emulatorConfig, mockWalletPaymentPubKeyHash, w1, w2, w3, w4, Wallet, TracePredicate, assertBlockchain)
+import Plutus.Contract
+import Plutus.Contract.Test ( CheckOptions, defaultCheckOptions, emulatorConfig
+                            , mockWalletPaymentPubKeyHash, w1, w2, w3, w4
+                            , Wallet, TracePredicate, assertBlockchain
+                            )
 import Plutus.Contract.Test.ContractModel qualified as CM
 import Plutus.Trace.Emulator qualified as Trace
 import Plutus.V1.Ledger.Ada qualified as Ada
--- import Plutus.V1.Ledger.Contexts (TxOutRef(..))
 import Plutus.V1.Ledger.Value (geq, valueOf)
 import Ledger hiding (singleton)
 
+import Control.Monad
 import Control.Lens hiding (elements)
 import Data.Data
 import Data.List (sort)
+import PlutusTx.List qualified as PTx
+import PlutusTx.AssocMap qualified as PTx
 import Data.Map qualified as Map
 import Data.Monoid (Last (..))
 import Data.Text hiding (last, filter, singleton, head, length)
+
 import Test.QuickCheck (Property, shrink, choose, oneof, elements)
 
 import Escrow
+import Utils.OffChain
 import Tests.Utility
 
 import qualified PlutusTx.AssocMap as AM
@@ -41,7 +49,10 @@ import Ledger.Scripts
 
 -- | Harcoded AssetClass to be used in the contract parameters.
 nftAssetClass :: Value.AssetClass
-nftAssetClass = Value.AssetClass ("5546c86bc32890de08fefb67e9b3276343881aebf047b346dfc1aeb7", "escrowToken")
+nftAssetClass =
+    Value.AssetClass ( "5546c86bc32890de08fefb67e9b3276343881aebf047b346dfc1aeb7"
+                     , "escrowToken"
+                     )
 
 -- | Harcoded contract parameters.
 param :: Parameter
@@ -57,7 +68,6 @@ runUtxo = TxOutRef
 options :: CheckOptions
 options = defaultCheckOptions & emulatorConfig .~ emCfg
 
-
 -- | Wallets that will be used to test the endpoints
 wallets :: [Wallet]
 wallets = [w1, w2, w3, w4]
@@ -65,12 +75,17 @@ wallets = [w1, w2, w3, w4]
 shrinkWallet :: Wallet -> [Wallet]
 shrinkWallet w = [w' | w' <- wallets, w' < w]
 
-data EscrowModel = EscrowModel { _isStarted :: Bool, _users :: Map.Map Wallet Integer}
+mockPKH :: Wallet -> PaymentPubKeyHash
+mockPKH = mockWalletPaymentPubKeyHash
+
+type DatumSpec = Map.Map Wallet Integer
+
+data EscrowModel = EscrowModel { _isStarted :: Bool, _users :: DatumSpec }
     deriving (Show, Eq, Data)
 
 makeLenses 'EscrowModel
 
-deriving instance Eq (CM.ContractInstanceKey EscrowModel w s e params)
+deriving instance Eq   (CM.ContractInstanceKey EscrowModel w s e params)
 deriving instance Show (CM.ContractInstanceKey EscrowModel w s e params)
 
 instance CM.ContractModel EscrowModel where
@@ -87,7 +102,8 @@ instance CM.ContractModel EscrowModel where
     initialInstances = [CM.StartContract (UserH w) () | w <- wallets]
 
     initialState = EscrowModel { _isStarted = False
-                               , _users     = Map.empty }
+                               , _users     = Map.empty
+                               }
 
     startInstances _ Start = [CM.StartContract OwnerH ()]
     startInstances _ _     = []
@@ -95,11 +111,13 @@ instance CM.ContractModel EscrowModel where
     instanceWallet OwnerH = w1
     instanceWallet (UserH w) = w
 
-    instanceContract _ OwnerH _ = run runUtxo
+    instanceContract _ OwnerH _     = run runUtxo
     instanceContract _ (UserH _) _  = endpoints param
 
     arbitraryAction s
-        | started && not (Map.null currentUsers) = oneof [genAddPayment, genCollect]
+        | started && not (Map.null currentUsers) = oneof [ genAddPayment
+                                                         , genCollect
+                                                         ]
         | started && Map.null currentUsers = genAddPayment
         | otherwise = pure Start
       where
@@ -113,9 +131,10 @@ instance CM.ContractModel EscrowModel where
         genValidWallet = elements $ Map.keys currentUsers
 
     precondition s Start = not $ s ^. CM.contractState . isStarted
-    precondition s (AddPayment _ _ v) = s ^. CM.contractState . isStarted &&
-                                      Ada.lovelaceValueOf v `geq` minAda
-    precondition s (Collect w) = s ^. CM.contractState . isStarted && Map.member w currentUsers
+    precondition s (AddPayment _ _ v) =
+        s ^. CM.contractState . isStarted && Ada.lovelaceValueOf v `geq` minAda
+    precondition s (Collect w) =
+        s ^. CM.contractState . isStarted && Map.member w currentUsers
       where
         currentUsers = s ^. CM.contractState . users
 
@@ -136,21 +155,22 @@ instance CM.ContractModel EscrowModel where
 
     perform _ _ _ Start = CM.delay 3
     perform h _ _ (AddPayment wFrom wTo v) = do
-        Trace.callEndpoint @"addPayment" (h $ UserH wFrom) (mockWalletPaymentPubKeyHash wTo, v)
+        Trace.callEndpoint @"addPayment" (h $ UserH wFrom) (mockPKH wTo, v)
         CM.delay 2
     perform h _ _ (Collect w) = do
-        Trace.callEndpoint @"collect" (h $ UserH w) (mockWalletPaymentPubKeyHash w)
+        Trace.callEndpoint @"collect" (h $ UserH w) (mockPKH w)
         CM.delay 2
 
     shrinkAction _ Start = []
-    shrinkAction _ (AddPayment wFrom wTo v) = [AddPayment wFrom wTo v' | v' <- shrink v]
-                                           ++ [AddPayment wFrom wTo' v | wTo' <- shrinkWallet wTo]
-                                           ++ [AddPayment wFrom' wTo v | wFrom' <- shrinkWallet wFrom]
+    shrinkAction _ (AddPayment wFrom wTo v) =
+           [AddPayment wFrom wTo v' | v' <- shrink v]
+        ++ [AddPayment wFrom wTo' v | wTo' <- shrinkWallet wTo]
+        ++ [AddPayment wFrom' wTo v | wFrom' <- shrinkWallet wFrom]
     shrinkAction _ (Collect w) = [Collect w' | w' <- shrinkWallet w]
 
 propEscrow :: CM.Actions EscrowModel -> Property
 propEscrow = CM.propRunActionsWithOptions options CM.defaultCoverageOptions
-    datumAssertion
+             datumAssertion
 
 datumAssertion :: CM.ModelState EscrowModel -> TracePredicate
 datumAssertion s = assertBlockchain f
@@ -171,3 +191,36 @@ datumAssertion s = assertBlockchain f
     valueContainsNFT :: Value -> Bool
     valueContainsNFT v = (uncurry $ valueOf v) (Value.unAssetClass nftAssetClass) == 1
 
+-- # Checking utxo/datum properties using the Contract Monad.
+type TestSchema = Endpoint "check" EscrowState
+
+checkEndpoint
+    :: Parameter
+    -> Contract () TestSchema Text ()
+checkEndpoint p = forever $ handleError logError $ awaitPromise checkEp
+  where
+    checkEp :: Promise () TestSchema Text ()
+    checkEp = endpoint @"check" $ checkOp p
+
+checkOp
+    :: forall s
+    .  Parameter
+    -> EscrowState
+    -> Contract () s Text ()
+checkOp p dSpec = do
+    (_,outxo) <- lookupScriptUtxo (escrowAddress p) nftAssetClass
+    datum        <- getContractDatum outxo
+    unless (eState datum == dSpec) $
+        error $ Prelude.unwords [ "Missmatch datums, expecting"
+                                , show dSpec
+                                , "but got"
+                                , show $ eState datum
+                                ]
+
+specToDatum :: DatumSpec -> EscrowState
+specToDatum =  mapKeysAM mockWalletPaymentPubKeyHash
+
+{-# INLINABLE mapKeysAM #-}
+mapKeysAM :: (k1 -> k2) -> Map.Map k1 a -> PTx.Map k2 a
+mapKeysAM f = PTx.fromList . PTx.map fFirst . Map.toList
+    where fFirst (x,y) = (f x, y)

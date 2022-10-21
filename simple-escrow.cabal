@@ -73,6 +73,7 @@ test-suite test
                , plutus-contract
                , plutus-ledger
                , plutus-ledger-api
+               , plutus-ledger-constraints
                , plutus-tx
                , text
                , freer-simple
