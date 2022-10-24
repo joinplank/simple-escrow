@@ -11,7 +11,7 @@
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE RankNTypes          #-}
 
-module Tests.Prop.Escrow (propEscrow) where
+module Tests.Prop.Escrow (propEscrow, noLockedPayments, checkLastDatum) where
 
 import Ledger.Value qualified as Value
 import Plutus.Contract
@@ -35,7 +35,7 @@ import Data.Map qualified as Map
 import Data.Monoid (Last (..))
 import Data.Text hiding (last, filter, singleton, head, length)
 
-import Test.QuickCheck (Property, shrink, choose, oneof, elements)
+import Test.QuickCheck (Property, shrink, oneof, elements, chooseInteger, tabulate)
 
 import Escrow
 import Utils.OffChain
@@ -93,11 +93,13 @@ instance CM.ContractModel EscrowModel where
     data Action EscrowModel = Start
                             | AddPayment Wallet Wallet Integer
                             | Collect Wallet
+                            | CheckDatum
         deriving (Eq, Show, Data)
 
     data ContractInstanceKey EscrowModel w s e params where
         OwnerH :: CM.ContractInstanceKey EscrowModel (Last Parameter) EmptySchema Text ()
         UserH  :: Wallet -> CM.ContractInstanceKey EscrowModel () EscrowSchema Text ()
+        CheckH :: CM.ContractInstanceKey EscrowModel () TestSchema Text ()
 
     initialInstances = [CM.StartContract (UserH w) () | w <- wallets]
 
@@ -106,12 +108,15 @@ instance CM.ContractModel EscrowModel where
                                }
 
     startInstances _ Start = [CM.StartContract OwnerH ()]
+    startInstances _ CheckDatum = [CM.StartContract CheckH ()]
     startInstances _ _     = []
 
     instanceWallet OwnerH = w1
+    instanceWallet CheckH = w1
     instanceWallet (UserH w) = w
 
     instanceContract _ OwnerH _     = run runUtxo
+    instanceContract _ CheckH _     = checkEndpoint param
     instanceContract _ (UserH _) _  = endpoints param
 
     arbitraryAction s
@@ -126,11 +131,12 @@ instance CM.ContractModel EscrowModel where
         lovelaces = 1_000_000
         genAddPayment = AddPayment <$> genWallet <*> genWallet <*> genPayment
         genCollect = Collect <$> genValidWallet
-        genPayment = choose (2 * lovelaces, 20 * lovelaces)
+        genPayment = chooseInteger (2 * lovelaces, 20 * lovelaces)
         genWallet = elements wallets
-        genValidWallet = elements $ Map.keys currentUsers
+        genValidWallet = elements$ Map.keys currentUsers
 
     precondition s Start = not $ s ^. CM.contractState . isStarted
+    precondition s CheckDatum = s ^. CM.contractState . isStarted
     precondition s (AddPayment _ _ v) =
         s ^. CM.contractState . isStarted && Ada.lovelaceValueOf v `geq` minAda
     precondition s (Collect w) =
@@ -140,8 +146,10 @@ instance CM.ContractModel EscrowModel where
 
     nextState Start = do
         isStarted .= True
+        users .= Map.empty
         CM.withdraw w1 minAda
         CM.wait 3
+    nextState CheckDatum = CM.wait 2
     nextState (AddPayment wFrom wTo v) = do
         currentUsers <- CM.viewContractState users
         CM.withdraw wFrom (Ada.lovelaceValueOf v)
@@ -154,6 +162,9 @@ instance CM.ContractModel EscrowModel where
         CM.wait 2
 
     perform _ _ _ Start = CM.delay 3
+    perform h _ s CheckDatum = do
+        Trace.callEndpoint @"check" (h CheckH) (mapKeysAM mockPKH (s ^. CM.contractState . users))
+        CM.delay 2
     perform h _ _ (AddPayment wFrom wTo v) = do
         Trace.callEndpoint @"addPayment" (h $ UserH wFrom) (mockPKH wTo, v)
         CM.delay 2
@@ -167,11 +178,17 @@ instance CM.ContractModel EscrowModel where
         ++ [AddPayment wFrom wTo' v | wTo' <- shrinkWallet wTo]
         ++ [AddPayment wFrom' wTo v | wFrom' <- shrinkWallet wFrom]
     shrinkAction _ (Collect w) = [Collect w' | w' <- shrinkWallet w]
+    shrinkAction _ CheckDatum = []
+
+    monitoring _ (AddPayment wFrom _ _) =
+        tabulate "AddPayment From Wallets" [show wFrom]
+    monitoring _ _ = id
 
 propEscrow :: CM.Actions EscrowModel -> Property
 propEscrow = CM.propRunActionsWithOptions options CM.defaultCoverageOptions
-             datumAssertion
+             (\ _ -> pure True)
 
+-- # Checking utxo/datum properties using Trace Predicates.
 datumAssertion :: CM.ModelState EscrowModel -> TracePredicate
 datumAssertion s = assertBlockchain f
   where
@@ -210,7 +227,9 @@ checkOp
 checkOp p dSpec = do
     (_,outxo) <- lookupScriptUtxo (escrowAddress p) nftAssetClass
     datum        <- getContractDatum outxo
-    unless (eState datum == dSpec) $
+    let m2 = sort $ AM.toList dSpec
+        m1 = sort $ AM.toList $ eState datum
+    unless (m1 == m2) $
         error $ Prelude.unwords [ "Missmatch datums, expecting"
                                 , show dSpec
                                 , "but got"
@@ -224,3 +243,21 @@ specToDatum =  mapKeysAM mockWalletPaymentPubKeyHash
 mapKeysAM :: (k1 -> k2) -> Map.Map k1 a -> PTx.Map k2 a
 mapKeysAM f = PTx.fromList . PTx.map fFirst . Map.toList
     where fFirst (x,y) = (f x, y)
+
+
+checkLastDatum :: CM.DL EscrowModel ()
+checkLastDatum = do
+    CM.action Start
+    CM.anyActions_
+    CM.action CheckDatum
+
+
+noLockedPayments :: CM.DL EscrowModel ()
+noLockedPayments = do
+    CM.action Start
+    CM.anyActions_
+    currentUsers <- CM.viewContractState users
+    CM.monitor (tabulate "Collecting payment" [show (Map.size currentUsers) ++ " wallets"])
+    mapM_ (CM.action . Collect) (Map.keys currentUsers)
+    newUsers <- CM.viewContractState users
+    CM.assertModel "Locked Payments should be empty" (const (Map.null newUsers))

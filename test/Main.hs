@@ -1,3 +1,4 @@
+{-# LANGUAGE ImportQualifiedPost #-}
 {-|
 Module      : Main
 Description : Definition of contract script.
@@ -11,6 +12,8 @@ module Main ( main ) where
 import GHC.IO.Encoding
 import Test.Tasty
 import Test.QuickCheck
+import Plutus.Contract.Test.ContractModel qualified as CM
+
 
 import Tests.OffChain.Tests
 import Tests.Prop.Escrow
@@ -19,7 +22,7 @@ main :: IO ()
 main = do
     setLocaleEncoding utf8
     putStrLn "----- BEGIN QUICKCHECK TESTS -----"
-    quickCheck propEscrow
+    quickCheck $ CM.forAllDL checkLastDatum propEscrow
     putStrLn "----- BEGIN OFFCHAIN TESTS -----"
     defaultMain Main.tests
 
