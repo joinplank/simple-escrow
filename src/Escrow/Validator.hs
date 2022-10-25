@@ -26,8 +26,9 @@ module Escrow.Validator
 
 import qualified PlutusTx
 import           Ledger
-import qualified Ledger.Scripts as Scripts
 import qualified Ledger.Typed.Scripts as Scripts
+import qualified Plutus.Script.Utils.V1.Address as Scripts
+import           Plutus.Script.Utils.V1.Scripts as Scripts
 
 import           Escrow.Types
 import           Escrow.OnChain
@@ -52,5 +53,5 @@ escrowInst parameter = Scripts.mkTypedValidator @Escrowing
 escrowValidator :: Parameter -> Scripts.Validator
 escrowValidator = Scripts.validatorScript . escrowInst
 
-escrowAddress :: Parameter -> Ledger.Address
-escrowAddress = scriptAddress . escrowValidator
+escrowAddress :: Parameter -> Address
+escrowAddress = Scripts.mkValidatorAddress . escrowValidator

@@ -16,17 +16,17 @@ Stability   : develop
 
 module Tests.OffChain.Tests where
 
-import           Data.Default              (Default (..))
-import           Control.Lens
+import Data.Default          (Default (..))
+import Control.Lens
 
-import           Plutus.Contract.Test
-import           Plutus.Trace.Emulator     as Emulator
+import Ledger.Ada            (lovelaceValueOf)
+import Plutus.Contract.Test
+import Plutus.Trace.Emulator as Emulator
 
-import           Test.Tasty
+import Test.Tasty
 
-import           Tests.Utility
-import           Tests.OffChain.Traces
-import qualified Plutus.V1.Ledger.Ada as Ada
+import Tests.Utility
+import Tests.OffChain.Traces
 
 -- | Function that runs a trace and prints the chain
 runTrace :: EmulatorTrace () -> IO ()
@@ -79,29 +79,29 @@ testBalance = testGroup "Testing Balances of the traces"
 --   Wallet 2 receives a payment of 2 adas from Wallet 3.
 succTraceBalance :: TracePredicate
 succTraceBalance =
-         walletFundsChange (knownWallet 1) (Ada.lovelaceValueOf (-2_000_000))
-    .&&. walletFundsChange (knownWallet 2) (Ada.lovelaceValueOf 2_000_000)
-    .&&. walletFundsChange (knownWallet 3) (Ada.lovelaceValueOf (-2_000_000))
+         walletFundsChange (knownWallet 1) (lovelaceValueOf (-2_000_000))
+    .&&. walletFundsChange (knownWallet 2) (lovelaceValueOf 2_000_000)
+    .&&. walletFundsChange (knownWallet 3) (lovelaceValueOf (-2_000_000))
 
 -- | Wallet 1 pays minAda to start the contract, then submits an addPayment
 --   for wallet 3 of 10 Ada , but it's never collected.
 collectFailBalance :: TracePredicate
 collectFailBalance =
-         walletFundsChange (knownWallet 1) (Ada.lovelaceValueOf (-12_000_000))
-    .&&. walletFundsChange (knownWallet 2) (Ada.lovelaceValueOf 0)
-    .&&. walletFundsChange (knownWallet 3) (Ada.lovelaceValueOf 0)
+         walletFundsChange (knownWallet 1) (lovelaceValueOf (-12_000_000))
+    .&&. walletFundsChange (knownWallet 2) (lovelaceValueOf 0)
+    .&&. walletFundsChange (knownWallet 3) (lovelaceValueOf 0)
 
 -- | Wallet 1 only pays minAda to start the contract.
 --   Other balances didn't change because Wallet 1 tries to pay with invalid
 --   amounts.
 addPayFailBalance :: TracePredicate
 addPayFailBalance =
-         walletFundsChange (knownWallet 1) (Ada.lovelaceValueOf (-2_000_000))
+         walletFundsChange (knownWallet 1) (lovelaceValueOf (-2_000_000))
 
 -- | Wallet 1 pays minAda to start the contract.
 overSpendingBalance :: TracePredicate
 overSpendingBalance =
-         walletFundsChange (knownWallet 1) (Ada.lovelaceValueOf (-2_000_000))
+         walletFundsChange (knownWallet 1) (lovelaceValueOf (-2_000_000))
 
 -- | Balances of succesful trace 2.
 --   Wallet 1 starts the contract paying minAda but also receives a payment of 1 Ada.
@@ -109,6 +109,6 @@ overSpendingBalance =
 --   Wallet 3 pays 2 ada to Wallet 2 and receives a payment of 1 ada of Wallet 2.
 otherSuccTraceBalance :: TracePredicate
 otherSuccTraceBalance =
-         walletFundsChange (knownWallet 1) (Ada.lovelaceValueOf (-1_000_000))
-    .&&. walletFundsChange (knownWallet 2) (Ada.lovelaceValueOf 0)
-    .&&. walletFundsChange (knownWallet 3) (Ada.lovelaceValueOf (-1_000_000))
+         walletFundsChange (knownWallet 1) (lovelaceValueOf (-1_000_000))
+    .&&. walletFundsChange (knownWallet 2) (lovelaceValueOf 0)
+    .&&. walletFundsChange (knownWallet 3) (lovelaceValueOf (-1_000_000))

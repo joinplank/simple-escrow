@@ -15,10 +15,15 @@ Common functions for manipulating script context.
 module Utils.OnChain where
 
 
-import           Ledger            hiding (singleton)
+import           Ledger            ( toValidatorHash, findOwnInput
+                                   , getContinuingOutputs
+                                   , findDatum
+                                   )
 import qualified Ledger.Ada        as Ada
 import           Ledger.Value      as Value
 import           Ledger.Scripts
+import           Plutus.V1.Ledger.Tx
+import           Plutus.V1.Ledger.Api
 import qualified PlutusTx
 import qualified PlutusTx.AssocMap as M
 import           PlutusTx.Maybe    as Maybe

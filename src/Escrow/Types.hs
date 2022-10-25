@@ -27,7 +27,6 @@ import qualified PlutusTx
 import           PlutusTx.Prelude hiding (Semigroup(..), unless, mapM)
 import           Ledger           hiding (singleton)
 import qualified Ledger.Ada        as Ada
-import           Ledger.Scripts
 
 import qualified Prelude          as HP
 
@@ -67,7 +66,7 @@ escrowTokenName = "escrowToken"
 
 -- | Escrow Redeemer. Necessary for knowing which operation is being validated
 --   when a script-utxo is spent.
-data EscrowRedeemer = AddPayRedeemer !PaymentPubKeyHash !Integer
+data EscrowRedeemer = AddPayRedeemer PaymentPubKeyHash Integer
                     | CollectRedeemer
     deriving (Generic, HP.Show)
     deriving anyclass (FromJSON, ToJSON)

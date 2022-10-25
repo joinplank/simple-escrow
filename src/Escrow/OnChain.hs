@@ -14,9 +14,13 @@ We define here only the contract validator.
 module Escrow.OnChain (mkEscrowValidator) where
 
 -- Third-party libraries.
-import           Ledger
+import           Ledger               ( PaymentPubKeyHash(..)
+                                      , findOwnInput, getContinuingOutputs
+                                      )
 import           Ledger.Ada
-import           PlutusTx.Numeric              as PNum
+import           Plutus.V1.Ledger.Tx
+import           Plutus.V1.Ledger.Api
+import           PlutusTx.Numeric     as PNum
 import           PlutusTx.Prelude
 
 -- Internal modules.

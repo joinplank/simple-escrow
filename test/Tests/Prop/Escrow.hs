@@ -13,7 +13,20 @@
 
 module Tests.Prop.Escrow (propEscrow, noLockedPayments, checkLastDatum) where
 
+import Control.Monad
+import Control.Lens hiding (elements)
+import Data.Data
+import Data.List (sort)
+import Data.Map qualified as Map
+import Data.Monoid (Last (..))
+import Data.Text hiding (last, filter, singleton, head, length)
+import Test.QuickCheck ( Property
+                       , shrink, oneof, elements, chooseInteger, tabulate
+                       )
+
 import Ledger.Value qualified as Value
+import Ledger hiding (singleton)
+import Ledger.Ada (lovelaceValueOf)
 import Plutus.Contract
 import Plutus.Contract.Test ( CheckOptions, defaultCheckOptions, emulatorConfig
                             , mockWalletPaymentPubKeyHash, w1, w2, w3, w4
@@ -21,36 +34,19 @@ import Plutus.Contract.Test ( CheckOptions, defaultCheckOptions, emulatorConfig
                             )
 import Plutus.Contract.Test.ContractModel qualified as CM
 import Plutus.Trace.Emulator qualified as Trace
-import Plutus.V1.Ledger.Ada qualified as Ada
 import Plutus.V1.Ledger.Value (geq, valueOf)
-import Ledger hiding (singleton)
-
-import Control.Monad
-import Control.Lens hiding (elements)
-import Data.Data
-import Data.List (sort)
 import PlutusTx.List qualified as PTx
 import PlutusTx.AssocMap qualified as PTx
-import Data.Map qualified as Map
-import Data.Monoid (Last (..))
-import Data.Text hiding (last, filter, singleton, head, length)
-
-import Test.QuickCheck (Property, shrink, oneof, elements, chooseInteger, tabulate)
+import PlutusTx hiding (Data)
 
 import Escrow
 import Utils.OffChain
 import Tests.Utility
 
-import qualified PlutusTx.AssocMap as AM
-import Escrow.Business()
-import Escrow.Types()
-import PlutusTx hiding (Data)
-import Ledger.Scripts
-
 -- | Harcoded AssetClass to be used in the contract parameters.
 nftAssetClass :: Value.AssetClass
 nftAssetClass =
-    Value.AssetClass ( "5546c86bc32890de08fefb67e9b3276343881aebf047b346dfc1aeb7"
+    Value.AssetClass ( "ba0fbe307800337c700982169ca4717ad16216b2d0615ead77a53cc0"
                      , "escrowToken"
                      )
 
@@ -61,8 +57,8 @@ param = mkParameter nftAssetClass
 -- | Harcoded UTxO that will be used to start the contract.
 runUtxo :: TxOutRef
 runUtxo = TxOutRef
-       "2616739c718145f994953df69175f18ad3deef2751fb2572babf2fbe361cd0d6"
-       50
+          "f1520257b50b033e631994827f6a432dad41fdb23b94a55f8c79aeb04a2bb8eb"
+          50
 
 -- | Config the checkOptions to use the same emulator config as the Offchain traces.
 options :: CheckOptions
@@ -138,7 +134,7 @@ instance CM.ContractModel EscrowModel where
     precondition s Start = not $ s ^. CM.contractState . isStarted
     precondition s CheckDatum = s ^. CM.contractState . isStarted
     precondition s (AddPayment _ _ v) =
-        s ^. CM.contractState . isStarted && Ada.lovelaceValueOf v `geq` minAda
+        s ^. CM.contractState . isStarted && lovelaceValueOf v `geq` minAda
     precondition s (Collect w) =
         s ^. CM.contractState . isStarted && Map.member w currentUsers
       where
@@ -152,12 +148,12 @@ instance CM.ContractModel EscrowModel where
     nextState CheckDatum = CM.wait 2
     nextState (AddPayment wFrom wTo v) = do
         currentUsers <- CM.viewContractState users
-        CM.withdraw wFrom (Ada.lovelaceValueOf v)
+        CM.withdraw wFrom (lovelaceValueOf v)
         users .= Map.insertWith (+) wTo v currentUsers
         CM.wait 2
     nextState (Collect w) = do
         currentUsers <- CM.viewContractState users
-        CM.deposit w (Ada.lovelaceValueOf $ Map.findWithDefault 0 w currentUsers)
+        CM.deposit w (lovelaceValueOf $ Map.findWithDefault 0 w currentUsers)
         users .= Map.delete w currentUsers
         CM.wait 2
 
@@ -201,8 +197,10 @@ datumAssertion s = assertBlockchain f
                [utxo] = filter (valueContainsNFT . txOutValue) outs
                Just datumH = txOutDatumHash utxo
                Just eDatum = Map.lookup datumH dataMap
-               m2 = sort $ (Map.toList . Map.mapKeys mockWalletPaymentPubKeyHash) (s ^. (CM.contractState . users))
-               m1 = sort $ AM.toList ((eState $ unsafeFromBuiltinData (getDatum eDatum)) :: EscrowState)
+               m2 = sort $ (Map.toList . Map.mapKeys mockPKH)
+                           (s ^. (CM.contractState . users))
+               m1 = sort $ PTx.toList
+                   ((eState $ unsafeFromBuiltinData (getDatum eDatum)) :: EscrowState)
             in m1 == m2
 
     valueContainsNFT :: Value -> Bool
@@ -227,8 +225,8 @@ checkOp
 checkOp p dSpec = do
     (_,outxo) <- lookupScriptUtxo (escrowAddress p) nftAssetClass
     datum        <- getContractDatum outxo
-    let m2 = sort $ AM.toList dSpec
-        m1 = sort $ AM.toList $ eState datum
+    let m2 = sort $ PTx.toList dSpec
+        m1 = sort $ PTx.toList $ eState datum
     unless (m1 == m2) $
         error $ Prelude.unwords [ "Missmatch datums, expecting"
                                 , show dSpec

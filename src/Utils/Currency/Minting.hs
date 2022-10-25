@@ -33,6 +33,7 @@ import Control.Lens
 import Data.Maybe                       hiding (isJust)
 import Data.Text                        qualified as T
 import Data.Aeson                       (FromJSON, ToJSON)
+import Data.Map.Internal                qualified as Map
 import GHC.Generics                     (Generic)
 import Prelude                          ((<>))
 import Prelude                          qualified as H
@@ -40,10 +41,9 @@ import Prelude                          qualified as H
 import PlutusTx                         qualified
 import PlutusTx.Prelude                 hiding (Monoid (..), Semigroup (..))
 import Plutus.Contract                  as Contract
-import Plutus.Script.Utils.V1.Scripts   (scriptCurrencySymbol)
 import Plutus.V1.Ledger.Value           as Value
 import Plutus.V1.Ledger.Contexts        qualified as V
-import Data.Map.Internal                qualified as Map
+import Plutus.Script.Utils.V1.Scripts   qualified as PV1
 import Ledger                           hiding (Minting)
 import Ledger.Constraints               qualified as Constraints
 import Ledger.Constraints               (ScriptLookups, TxConstraints)
@@ -79,14 +79,14 @@ class Currency c where
         the Currency typeclass: it needs to know the exact type at compilation
         time so the boilerplate needs to be made for every instance.
     -}
-    curPolicy :: c -> Scripts.MintingPolicy
+    curPolicy :: c -> MintingPolicy
 
     -- | The predicate that restricts the currency minting.
     checkPolicy :: c -> MintingPolicyAction -> V.ScriptContext -> Bool
 
 {-# INLINEABLE curSymbol #-}
 curSymbol :: Currency c => c -> CurrencySymbol
-curSymbol = scriptCurrencySymbol . curPolicy
+curSymbol = PV1.scriptCurrencySymbol . curPolicy
 
 -- | Given the currency and its amount, returns the value to be minted.
 mintedValue :: Currency c => c -> [(TokenName, Integer)] -> Value
@@ -137,7 +137,7 @@ mintTxWithUTxO amounts ref = mapError (review _CurrencyError) .
     lookupCiTxOut $ \ciTxOut -> do
         let theCurrency = mkCurrency ref
             mintedVal = mintedValue theCurrency amounts
-            lookups = Constraints.mintingPolicy (curPolicy theCurrency)
+            lookups = Constraints.plutusV1MintingPolicy (curPolicy theCurrency)
                    <> Constraints.unspentOutputs (Map.singleton ref ciTxOut)
             tx = Constraints.mustMintValueWithRedeemer mintingRed mintedVal
               <> mustSpendPubKeyOutputIfTxOutIsFromWallet ref ciTxOut

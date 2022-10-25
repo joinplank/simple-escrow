@@ -14,7 +14,6 @@ Stability   : develop
 module Tests.OffChain.Traces where
 
 import Control.Monad hiding (fmap)
-
 import Plutus.Contract.Test
 import Plutus.Trace.Emulator as Emulator
 import Plutus.V1.Ledger.Api
@@ -25,7 +24,7 @@ import Escrow (run, endpoints)
 
 utxo :: TxOutRef
 utxo = TxOutRef
-       "2616739c718145f994953df69175f18ad3deef2751fb2572babf2fbe361cd0d6"
+       "f1520257b50b033e631994827f6a432dad41fdb23b94a55f8c79aeb04a2bb8eb"
        50
 
 -- | A trace that runs succesfully and it's balanced.

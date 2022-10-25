@@ -27,7 +27,6 @@ import           Prelude           hiding ((*))
 import           Ledger            hiding (singleton)
 import qualified Ledger.Ada         as Ada
 import           Ledger.Constraints as Constraints
-import           Ledger.Scripts
 import           Ledger.Typed.Scripts
 import           Ledger.Value
 import qualified PlutusTx
@@ -46,14 +45,14 @@ lookupScriptUtxos
     -> Contract w s Text [(TxOutRef, ChainIndexTxOut)]
 lookupScriptUtxos addr nft =
     utxosAt addr >>=
-    (mapM (\(oref, o) -> ciTxOutDatum loadDatum o <&> (oref,)) . Map.toList)
+    (mapM (\(oref, o) -> ciTxOutScriptDatum loadDatum o <&> (oref,)) . Map.toList)
     . Map.filter (checkTxHasNFT nft . (^. ciTxOutValue))
   where
     loadDatum
-        :: Either DatumHash Datum
-        -> Contract w s T.Text (Either DatumHash Datum)
-    loadDatum lhd@(Left dh) = maybe lhd Right <$> datumFromHash dh
-    loadDatum d = return d
+        :: (DatumHash, Maybe Datum)
+        -> Contract w s Text (DatumHash, Maybe Datum)
+    loadDatum ld@(dh, Nothing) = maybe ld ((dh,) . Just) <$> datumFromHash dh
+    loadDatum d = pure d
 
     checkTxHasNFT :: AssetClass -> Value -> Bool
     checkTxHasNFT asc v = assetClassValueOf v asc == 1
@@ -87,7 +86,7 @@ getChainIndexTxOutDatum
     -> Maybe d
 getChainIndexTxOutDatum ciTxOut =
     case matching _ScriptChainIndexTxOut ciTxOut of
-        Right (_,_,Right d,_) -> PlutusTx.fromBuiltinData $ getDatum d
+        Right (_,_,(_,Just d),_,_) -> PlutusTx.fromBuiltinData $ getDatum d
         _ -> Nothing
 
 -- | Gets only the value of the given asset class.
@@ -114,5 +113,6 @@ handleTxConstraints :: ( PlutusTx.ToData (RedeemerType a)
                     -> TxConstraints (RedeemerType a)
                                      (DatumType a)
                     -> Contract w s T.Text ()
-handleTxConstraints lkp tx = mkTxConstraints lkp tx >>= 
-                                Contract.adjustUnbalancedTx >>= yieldUnbalancedTx
+handleTxConstraints lkp tx = mkTxConstraints lkp tx >>=
+                             Contract.adjustUnbalancedTx >>=
+                             yieldUnbalancedTx

@@ -83,11 +83,11 @@ start txRef = do
 
         lkp = mconcat
               [ Constraints.typedValidatorLookups (escrowInst parameter)
-              , Constraints.otherScript (escrowValidator parameter)
+              , Constraints.plutusV1OtherScript (escrowValidator parameter)
               , nftLkp
               ]
         tx  = mconcat
-              [ Constraints.mustPayToTheScript datum val
+              [ Constraints.mustPayToTheScriptWithDatumInTx datum val
               , nftTx
               ]
 
@@ -105,6 +105,9 @@ addPaymentOp
     -> Contract w s Text ()
 addPaymentOp p (pkh, m) = do
     (oref,outxo) <- lookupScriptUtxo (escrowAddress p) (stateNFT p)
+    logInfo @String $ "Ble" <> show outxo
+    d <- datumFromHash $ fst $ _ciTxOutScriptDatum outxo
+    logInfo @String $ "Ble" <> show d
     datum        <- getContractDatum outxo
 
     let newState = addPayment (eState datum) pkh m in
@@ -118,7 +121,7 @@ addPaymentOp p (pkh, m) = do
                     lkp = contractLookups p [(oref,outxo)]
                     tx  = mconcat
                           [ Constraints.mustSpendScriptOutput oref (addPayRedeemer pkh m)
-                          , Constraints.mustPayToTheScript upDatum scriptValue
+                          , Constraints.mustPayToTheScriptWithDatumInTx upDatum scriptValue
                           ]
 
                 handleTxConstraints @Escrowing lkp tx
@@ -145,7 +148,7 @@ collectOp p pkh = do
                 lkp = contractLookups p [(oref,outxo)]
                 tx  = mconcat
                       [ Constraints.mustSpendScriptOutput oref collectRedeemer
-                      , Constraints.mustPayToTheScript upDatum scriptValue
+                      , Constraints.mustPayToTheScriptWithDatumInTx upDatum scriptValue
                       , Constraints.mustBeSignedBy pkh
                       ]
 
@@ -160,7 +163,7 @@ contractLookups
 contractLookups p utxos = mconcat
     [ Constraints.unspentOutputs (Map.fromList utxos)
     , Constraints.typedValidatorLookups (escrowInst p)
-    , Constraints.otherScript (escrowValidator p)
+    , Constraints.plutusV1OtherScript (escrowValidator p)
     ]
 
 -- | Lifted function for getting datum from a ChainIndexTxOut.
