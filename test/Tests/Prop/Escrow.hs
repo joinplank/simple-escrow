@@ -10,6 +10,7 @@
 {-# LANGUAGE NumericUnderscores  #-}
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE LambdaCase          #-}
 
 module Tests.Prop.Escrow (propEscrow, noLockedPayments, checkLastDatum) where
 
@@ -29,6 +30,7 @@ import Control.Monad
 import Control.Lens hiding (elements)
 import Data.Data
 import Data.List (sort)
+import Data.Maybe (fromJust)
 import PlutusTx.List qualified as PTx
 import PlutusTx.AssocMap qualified as PTx
 import Data.Map qualified as Map
@@ -47,22 +49,10 @@ import Escrow.Types()
 import PlutusTx hiding (Data)
 import Ledger.Scripts
 
--- | Harcoded AssetClass to be used in the contract parameters.
-nftAssetClass :: Value.AssetClass
-nftAssetClass =
-    Value.AssetClass ( "5546c86bc32890de08fefb67e9b3276343881aebf047b346dfc1aeb7"
-                     , "escrowToken"
-                     )
-
--- | Harcoded contract parameters.
-param :: Parameter
-param = mkParameter nftAssetClass
-
--- | Harcoded UTxO that will be used to start the contract.
-runUtxo :: TxOutRef
-runUtxo = TxOutRef
-       "2616739c718145f994953df69175f18ad3deef2751fb2572babf2fbe361cd0d6"
-       50
+getRunUtxo :: Contract (Last Parameter) EmptySchema Text ()
+getRunUtxo = do 
+    utxos <- utxosAt $ pubKeyHashAddress (mockPKH w1) Nothing
+    run . head . Map.keys $ utxos
 
 -- | Config the checkOptions to use the same emulator config as the Offchain traces.
 options :: CheckOptions
@@ -80,7 +70,7 @@ mockPKH = mockWalletPaymentPubKeyHash
 
 type DatumSpec = Map.Map Wallet Integer
 
-data EscrowModel = EscrowModel { _isStarted :: Bool, _users :: DatumSpec }
+data EscrowModel = EscrowModel { _isStarted :: Bool, _users :: DatumSpec, _token :: Maybe CM.SymToken}
     deriving (Show, Eq, Data)
 
 makeLenses 'EscrowModel
@@ -98,26 +88,28 @@ instance CM.ContractModel EscrowModel where
 
     data ContractInstanceKey EscrowModel w s e params where
         OwnerH :: CM.ContractInstanceKey EscrowModel (Last Parameter) EmptySchema Text ()
-        UserH  :: Wallet -> CM.ContractInstanceKey EscrowModel () EscrowSchema Text ()
-        CheckH :: CM.ContractInstanceKey EscrowModel () TestSchema Text ()
+        UserH  :: Wallet -> CM.ContractInstanceKey EscrowModel () EscrowSchema Text CM.SymToken
+        CheckH :: CM.ContractInstanceKey EscrowModel () TestSchema Text CM.SymToken
 
-    initialInstances = [CM.StartContract (UserH w) () | w <- wallets]
+    initialInstances = []
 
     initialState = EscrowModel { _isStarted = False
                                , _users     = Map.empty
+                               , _token     = Nothing
                                }
 
-    startInstances _ Start = [CM.StartContract OwnerH ()]
-    startInstances _ CheckDatum = [CM.StartContract CheckH ()]
-    startInstances _ _     = []
+    startInstances _ Start              = [CM.StartContract OwnerH ()]
+    startInstances s CheckDatum         = [CM.StartContract CheckH $ fromJust (s ^. CM.contractState . token)]
+    startInstances s (Collect w)        = [CM.StartContract (UserH w) $ fromJust (s ^. CM.contractState . token)]
+    startInstances s (AddPayment w _ _) = [CM.StartContract (UserH w) $ fromJust (s ^. CM.contractState . token)]
 
     instanceWallet OwnerH = w1
     instanceWallet CheckH = w1
     instanceWallet (UserH w) = w
 
-    instanceContract _ OwnerH _     = run runUtxo
-    instanceContract _ CheckH _     = checkEndpoint param
-    instanceContract _ (UserH _) _  = endpoints param
+    instanceContract _ OwnerH _                = getRunUtxo
+    instanceContract tokenSem CheckH token     = checkEndpoint . Parameter . tokenSem $ token
+    instanceContract tokenSem (UserH _) token  = endpoints . Parameter . tokenSem $ token
 
     arbitraryAction s
         | started && not (Map.null currentUsers) = oneof [ genAddPayment
@@ -145,10 +137,12 @@ instance CM.ContractModel EscrowModel where
         currentUsers = s ^. CM.contractState . users
 
     nextState Start = do
+        et <- CM.createToken "Escrow"
+        token .= Just et
         isStarted .= True
         users .= Map.empty
         CM.withdraw w1 minAda
-        CM.wait 3
+        CM.wait 4
     nextState CheckDatum = CM.wait 2
     nextState (AddPayment wFrom wTo v) = do
         currentUsers <- CM.viewContractState users
@@ -161,7 +155,11 @@ instance CM.ContractModel EscrowModel where
         users .= Map.delete w currentUsers
         CM.wait 2
 
-    perform _ _ _ Start = CM.delay 3
+    perform h _ _ Start = do
+        CM.delay 3
+        Trace.observableState (h OwnerH) >>= \case
+            Last (Just (Parameter ac)) -> CM.registerToken "Escrow" ac
+            _                          -> Trace.throwError $ Trace.GenericError "initialisation failed"
     perform h _ s CheckDatum = do
         Trace.callEndpoint @"check" (h CheckH) (mapKeysAM mockPKH (s ^. CM.contractState . users))
         CM.delay 2
@@ -188,26 +186,6 @@ propEscrow :: CM.Actions EscrowModel -> Property
 propEscrow = CM.propRunActionsWithOptions options CM.defaultCoverageOptions
              (\ _ -> pure True)
 
--- # Checking utxo/datum properties using Trace Predicates.
-datumAssertion :: CM.ModelState EscrowModel -> TracePredicate
-datumAssertion s = assertBlockchain f
-  where
-    f :: [Block] -> Bool
-    f ([]:xs) = f xs
-    f [[_]] = True
-    f bs = let Valid tx = last $ head bs
-               outs = txOutputs $ _emulatorTx tx
-               dataMap = txData $ _emulatorTx tx
-               [utxo] = filter (valueContainsNFT . txOutValue) outs
-               Just datumH = txOutDatumHash utxo
-               Just eDatum = Map.lookup datumH dataMap
-               m2 = sort $ (Map.toList . Map.mapKeys mockWalletPaymentPubKeyHash) (s ^. (CM.contractState . users))
-               m1 = sort $ AM.toList ((eState $ unsafeFromBuiltinData (getDatum eDatum)) :: EscrowState)
-            in m1 == m2
-
-    valueContainsNFT :: Value -> Bool
-    valueContainsNFT v = (uncurry $ valueOf v) (Value.unAssetClass nftAssetClass) == 1
-
 -- # Checking utxo/datum properties using the Contract Monad.
 type TestSchema = Endpoint "check" EscrowState
 
@@ -225,7 +203,7 @@ checkOp
     -> EscrowState
     -> Contract () s Text ()
 checkOp p dSpec = do
-    (_,outxo) <- lookupScriptUtxo (escrowAddress p) nftAssetClass
+    (_,outxo) <- lookupScriptUtxo (escrowAddress p) (stateNFT p)
     datum        <- getContractDatum outxo
     let m2 = sort $ AM.toList dSpec
         m1 = sort $ AM.toList $ eState datum
