@@ -105,9 +105,6 @@ addPaymentOp
     -> Contract w s Text ()
 addPaymentOp p (pkh, m) = do
     (oref,outxo) <- lookupScriptUtxo (escrowAddress p) (stateNFT p)
-    logInfo @String $ "Ble" <> show outxo
-    d <- datumFromHash $ fst $ _ciTxOutScriptDatum outxo
-    logInfo @String $ "Ble" <> show d
     datum        <- getContractDatum outxo
 
     let newState = addPayment (eState datum) pkh m in
@@ -116,7 +113,9 @@ addPaymentOp p (pkh, m) = do
                        "Payment operation failed: tried to pay with amount <=0"
             Just st -> do
                 let upDatum     = mkEscrowDatum st
-                    scriptValue = outxo ^. ciTxOutValue <> lovelaceValueOf m
+                    scriptValue = outxo ^. decoratedTxOutValue
+                                  <>
+                                  lovelaceValueOf m
 
                     lkp = contractLookups p [(oref,outxo)]
                     tx  = mconcat
@@ -143,7 +142,9 @@ collectOp p pkh = do
                    "Collect operation failed: signer not in state"
         Just (st,val) -> do
             let upDatum     = mkEscrowDatum st
-                scriptValue = outxo ^. ciTxOutValue PNum.- lovelaceValueOf val
+                scriptValue = outxo ^. decoratedTxOutValue
+                              PNum.-
+                              lovelaceValueOf val
 
                 lkp = contractLookups p [(oref,outxo)]
                 tx  = mconcat
@@ -158,7 +159,7 @@ collectOp p pkh = do
 -- | Lookups for submitting a transaction spending some utxos.
 contractLookups
     :: Parameter
-    -> [(TxOutRef,ChainIndexTxOut)]
+    -> [(TxOutRef,DecoratedTxOut)]
     -> ScriptLookups Escrowing
 contractLookups p utxos = mconcat
     [ Constraints.unspentOutputs (Map.fromList utxos)
@@ -169,7 +170,7 @@ contractLookups p utxos = mconcat
 -- | Lifted function for getting datum from a ChainIndexTxOut.
 getContractDatum
     :: forall w s
-    .  ChainIndexTxOut
+    .  DecoratedTxOut
     -> Contract w s Text EscrowDatum
 getContractDatum = maybe (throwError "Can't find contract datum") return .
-                   getChainIndexTxOutDatum
+                   getDecoratedTxOutDatum

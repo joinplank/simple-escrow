@@ -143,7 +143,7 @@ mintTxWithUTxO amounts ref = mapError (review _CurrencyError) .
               <> mustSpendPubKeyOutputIfTxOutIsFromWallet ref ciTxOut
         pure (theCurrency, lookups, tx)
   where
-    lookupCiTxOut :: ( ChainIndexTxOut ->
+    lookupCiTxOut :: ( DecoratedTxOut ->
                             Contract w
                                      s
                                      CurrencyError
@@ -160,11 +160,11 @@ mintTxWithUTxO amounts ref = mapError (review _CurrencyError) .
               Just ciTxOut -> continue ciTxOut
 
     mustSpendPubKeyOutputIfTxOutIsFromWallet :: TxOutRef
-                                             -> ChainIndexTxOut
+                                             -> DecoratedTxOut
                                              -> TxConstraints i o
     mustSpendPubKeyOutputIfTxOutIsFromWallet ref_ = \case
-        PublicKeyChainIndexTxOut{} -> Constraints.mustSpendPubKeyOutput ref_
-        ScriptChainIndexTxOut{}    -> H.mempty
+        PublicKeyDecoratedTxOut{} -> Constraints.mustSpendPubKeyOutput ref_
+        ScriptDecoratedTxOut{}    -> H.mempty
 
 PlutusTx.makeIsDataIndexed ''MintingPolicyAction [ ('Minting, 0)
                                                  , ('Burning, 1)

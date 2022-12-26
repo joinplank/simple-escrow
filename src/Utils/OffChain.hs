@@ -42,17 +42,20 @@ lookupScriptUtxos
     :: forall w s
     .  Address
     -> AssetClass
-    -> Contract w s Text [(TxOutRef, ChainIndexTxOut)]
+    -> Contract w s Text [(TxOutRef, DecoratedTxOut)]
 lookupScriptUtxos addr nft =
     utxosAt addr >>=
-    (mapM (\(oref, o) -> ciTxOutScriptDatum loadDatum o <&> (oref,)) . Map.toList)
-    . Map.filter (checkTxHasNFT nft . (^. ciTxOutValue))
+    (mapM (\ (oref, o) -> decoratedTxOutDatum loadDatum o <&> (oref,))
+    .Map.toList
+    . Map.filter (checkTxHasNFT nft . (^. decoratedTxOutValue)))
   where
     loadDatum
-        :: (DatumHash, Maybe Datum)
-        -> Contract w s Text (DatumHash, Maybe Datum)
-    loadDatum ld@(dh, Nothing) = maybe ld ((dh,) . Just) <$> datumFromHash dh
-    loadDatum d = pure d
+        :: (DatumHash, DatumFromQuery)
+        -> Contract w s T.Text (DatumHash, DatumFromQuery)
+    loadDatum d@(dh, DatumUnknown) =  maybe d ((dh,) . DatumInBody)
+                                      <$>
+                                      datumFromHash dh
+    loadDatum d = return d
 
     checkTxHasNFT :: AssetClass -> Value -> Bool
     checkTxHasNFT asc v = assetClassValueOf v asc == 1
@@ -66,7 +69,7 @@ lookupScriptUtxo
     :: forall w s
     .  Address
     -> AssetClass
-    -> Contract w s Text (TxOutRef, ChainIndexTxOut)
+    -> Contract w s Text (TxOutRef, DecoratedTxOut)
 lookupScriptUtxo addr nft = lookupScriptUtxos addr nft >>=
     \case
         [utxo] -> return utxo
@@ -77,16 +80,17 @@ lookupScriptUtxo addr nft = lookupScriptUtxos addr nft >>=
                      , T.pack $ show nft
                      ]
 
-{- | Get the datum from a chainIndexTxOut, only if isn't a datum hash. This
+{- | Get the datum from a DecoratedTxOut, only if isn't a datum hash. This
      pure function doesn't call `datumFromHash`.
 -}
-getChainIndexTxOutDatum
+getDecoratedTxOutDatum
     :: PlutusTx.FromData d
-    => ChainIndexTxOut
+    => DecoratedTxOut
     -> Maybe d
-getChainIndexTxOutDatum ciTxOut =
-    case matching _ScriptChainIndexTxOut ciTxOut of
-        Right (_,_,(_,Just d),_,_) -> PlutusTx.fromBuiltinData $ getDatum d
+getDecoratedTxOutDatum dTxOut =
+    case matching _ScriptDecoratedTxOut dTxOut of
+        Right (_,_,_,(_,DatumInline d),_,_) -> PlutusTx.fromBuiltinData $ getDatum d
+        Right (_,_,_,(_,DatumInBody d),_,_) -> PlutusTx.fromBuiltinData $ getDatum d
         _ -> Nothing
 
 -- | Gets only the value of the given asset class.
